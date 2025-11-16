@@ -1,0 +1,227 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: "Backbreaker Processing Stack for Repack.io. Creates:\n  - SQS queue\
+  \ + DLQ\n  - Processed images bucket\n  - DB connection secret\n  - IAM Role for\
+  \ Elastic Beanstalk worker\n  - Elastic Beanstalk Application + Environment\n"
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Deployment environment (dev, demo*, test, qa, uat, prd, test-*)
+    Default: prd
+    AllowedPattern: ^(dev|qa|uat|prd|test.*|demo.*)$
+  EbAppVersionBucket:
+    Type: String
+    Description: S3 bucket where EB app version zip is stored
+    Default: repackio-eb-apps
+  EbAppVersionKey:
+    Type: String
+    Description: S3 key of the EB application bundle
+    Default: backbreaker/backbreaker-latest.zip
+  DbSecretName:
+    Type: String
+    Default: ''
+    Description: Optional override for DB Secret name. Defaults to backbreaker-db-{env}.
+  VpcId:
+    Type: String
+    Description: VPC ID where EB should run
+  SubnetOne:
+    Type: String
+    Description: First public or private subnet for EB
+  SubnetTwo:
+    Type: String
+    Description: Second public or private subnet for EB
+Mappings:
+  EnvToUploadsBucket:
+    dev:
+      Name: repackio-breakers-uploads-dev
+    qa:
+      Name: repackio-breakers-uploads-qa
+    prd:
+      Name: repackio-breakers-uploads-prd
+Resources:
+  ProcessedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: repackio-processed-${EnvironmentName}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+    DeletionPolicy: Retain
+    Metadata:
+      SamResourceId: ProcessedBucket
+  DbConnectionSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name:
+        Fn::If:
+        - HasCustomSecretName
+        - Ref: DbSecretName
+        - Fn::Sub: backbreaker-db-${EnvironmentName}
+      Description: Database credentials for Backbreaker API
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"repackadmin"}'
+        GenerateStringKey: password
+        ExcludePunctuation: true
+        PasswordLength: 20
+    Metadata:
+      SamResourceId: DbConnectionSecret
+Conditions:
+  HasCustomSecretName:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: DbSecretName
+      - ''
+  ProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName:
+        Fn::Sub: backbreaker-processing-dlq-${EnvironmentName}
+      MessageRetentionPeriod: 1209600
+  ProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName:
+        Fn::Sub: backbreaker-processing-queue-${EnvironmentName}
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        maxReceiveCount: 5
+        deadLetterTargetArn:
+          Fn::GetAtt:
+          - ProcessingDLQ
+          - Arn
+  BackbreakerEbInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: BackbreakerEBRole-${EnvironmentName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+            - elasticbeanstalk.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+      - arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+      Policies:
+      - PolicyName: BackbreakerProcessingPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource:
+            - Fn::Sub: arn:aws:s3:::repackio-breakers-uploads-${EnvironmentName}/*
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            - s3:GetObject
+            Resource:
+            - Fn::Sub: arn:aws:s3:::repackio-processed-${EnvironmentName}/*
+          - Effect: Allow
+            Action:
+            - sqs:SendMessage
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+            - sqs:GetQueueUrl
+            Resource:
+            - Fn::GetAtt:
+              - ProcessingQueue
+              - Arn
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource:
+              Ref: DbConnectionSecret
+  BackbreakerEbInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+      - Ref: BackbreakerEbInstanceRole
+  BackbreakerEbApp:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName:
+        Fn::Sub: backbreaker-${EnvironmentName}
+      Description: Backbreaker API
+  BackbreakerEbAppVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      ApplicationName:
+        Ref: BackbreakerEbApp
+      Description: Backbreaker app version
+      SourceBundle:
+        S3Bucket:
+          Ref: EbAppVersionBucket
+        S3Key:
+          Ref: EbAppVersionKey
+  BackbreakerEbEnv:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      EnvironmentName:
+        Fn::Sub: backbreaker-${EnvironmentName}
+      ApplicationName:
+        Ref: BackbreakerEbApp
+      SolutionStackName: 64bit Amazon Linux 2023 v4.0.3 running Corretto 21
+      VersionLabel:
+        Ref: BackbreakerEbAppVersion
+      OptionSettings:
+      - Namespace: aws:ec2:vpc
+        OptionName: VPCId
+        Value:
+          Ref: VpcId
+      - Namespace: aws:ec2:vpc
+        OptionName: Subnets
+        Value:
+          Fn::Join:
+          - ','
+          - - Ref: SubnetOne
+            - Ref: SubnetTwo
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: IamInstanceProfile
+        Value:
+          Ref: BackbreakerEbInstanceProfile
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: AWS_REGION
+        Value:
+          Ref: AWS::Region
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: PROCESSING_QUEUE_URL
+        Value:
+          Ref: ProcessingQueue
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: UPLOADS_BUCKET
+        Value:
+          Fn::Sub: repackio-breakers-uploads-${EnvironmentName}
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: PROCESSED_BUCKET
+        Value:
+          Fn::Sub: repackio-processed-${EnvironmentName}
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: DB_SECRET_NAME
+        Value:
+          Ref: DbConnectionSecret
+Outputs:
+  FinalizeEndpoint:
+    Description: HTTPS endpoint for mobile app
+    Value:
+      Fn::Sub: https://${BackbreakerEbEnv.EndpointURL}/api/series/{seriesId}/finalize
+  ProcessingQueueUrl:
+    Value:
+      Ref: ProcessingQueue
+  ProcessedBucket:
+    Value:
+      Ref: ProcessedBucket
+  DbSecretArn:
+    Value:
+      Ref: DbConnectionSecret

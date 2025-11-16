@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Backbreaker Processing Infrastructure
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: The environment name (e.g. demo10)
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC where EB will run
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Two subnets for EB instances (must be in same VPC)
+
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: Optional EC2 key pair name to enable SSH access (leave blank to skip)
+
+  EbAppVersionBucket:
+    Type: String
+    Description: S3 bucket where the Elastic Beanstalk application bundle is stored
+
+  EbAppVersionKey:
+    Type: String
+    Description: S3 key for the Elastic Beanstalk application bundle
+
+  RdsHost:
+    Type: String
+    Description: Database host for this environment
+
+  RdsPort:
+    Type: String
+    Default: "5432"
+    Description: Database port (default 5432)
+
+  RdsName:
+    Type: String
+    Description: Database name
+
+  RdsUsername:
+    Type: String
+    Description: Database username
+
+  RdsPassword:
+    Type: String
+    NoEcho: true
+    Description: Database password
+
+Conditions:
+  UseKeyPair: !Not [ !Equals [ !Ref KeyPairName, "" ] ]
+
+Resources:
+  #############################################
+  # S3 Buckets
+  #############################################
+
+  ProcessedBucketNonProd:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "repackio-processed-${EnvironmentName}"
+
+  RawUploadsBucketNonProd:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "repackio-breakers-uploads-${EnvironmentName}"
+
+  #############################################
+  # Secrets Manager - Database Secret
+  #############################################
+
+  DbSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "backbreaker-db-${EnvironmentName}"
+      Description: Backbreaker DB credentials for environment
+      SecretString: !Sub |
+        {
+          "host": "${RdsHost}",
+          "port": "${RdsPort}",
+          "dbname": "${RdsName}",
+          "username": "${RdsUsername}",
+          "password": "${RdsPassword}"
+        }
+
+  #############################################
+  # SQS Queue + DLQ
+  #############################################
+
+  ProcessingDLQ:
+    Type: AWS::SQS::Queue
+
+  ProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "backbreaker-proc-${EnvironmentName}"
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ProcessingDLQ.Arn
+        maxReceiveCount: 5
+
+  #############################################
+  # IAM Role for Elastic Beanstalk EC2 Instances
+  #############################################
+
+  BackbreakerEBRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "backbreaker-eb-role-${EnvironmentName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BackbreakerSecretsAndS3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueUrl
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "*"
+
+  BackbreakerEBInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "backbreaker-eb-profile-${EnvironmentName}"
+      Roles:
+        - !Ref BackbreakerEBRole
+
+  #############################################
+  # Elastic Beanstalk Application + Version
+  #############################################
+
+  BackbreakerApp:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Sub "backbreaker-app-${EnvironmentName}"
+      Description: Backbreaker API application
+
+  BackbreakerAppVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      ApplicationName: !Ref BackbreakerApp
+      SourceBundle:
+        S3Bucket: !Ref EbAppVersionBucket
+        S3Key: !Ref EbAppVersionKey
+
+  #############################################
+  # Elastic Beanstalk Environment
+  #############################################
+
+  BackbreakerEnv:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref BackbreakerApp
+      EnvironmentName: !Sub "backbreaker-${EnvironmentName}"
+      SolutionStackName: "64bit Amazon Linux 2023 v4.7.1 running Corretto 21"
+      VersionLabel: !Ref BackbreakerAppVersion
+
+      OptionSettings:
+        # ---------- Application ENV VARS ----------
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: ENVIRONMENT_NAME
+          Value: !Ref EnvironmentName
+
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DB_SECRET_NAME
+          Value: !Sub "backbreaker-db-${EnvironmentName}"
+
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: AWS_REGION
+          Value: !Ref AWS::Region
+
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: SPRING_PROFILES_ACTIVE
+          Value: "aws"
+
+        # ---------- S3 ----------
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: POOL_RAW_BUCKET
+          Value: !Sub "repackio-breakers-uploads-${EnvironmentName}"
+
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: POOL_PROCESSED_BUCKET
+          Value: !Sub "repackio-processed-${EnvironmentName}"
+
+        # ---------- SQS ----------
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: SQS_PROCESSING_URL
+          Value: !Ref ProcessingQueue
+
+        # ---------- VPC Settings ----------
+        - Namespace: aws:ec2:vpc
+          OptionName: VPCId
+          Value: !Ref VpcId
+
+        - Namespace: aws:ec2:vpc
+          OptionName: Subnets
+          Value: !Join [ ",", [ !Select [0, !Ref SubnetIds], !Select [1, !Ref SubnetIds] ] ]
+
+        - Namespace: aws:ec2:vpc
+          OptionName: ELBSubnets
+          Value: !Join [ ",", [ !Select [0, !Ref SubnetIds], !Select [1, !Ref SubnetIds] ] ]
+
+        - Namespace: aws:ec2:vpc
+          OptionName: AssociatePublicIpAddress
+          Value: "true"
+
+        # ---------- EC2 INSTANCE PROFILE ----------
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: IamInstanceProfile
+          Value: !Ref BackbreakerEBInstanceProfile
+
+        - !If
+          - UseKeyPair
+          - 
+            Namespace: aws:autoscaling:launchconfiguration
+            OptionName: EC2KeyName
+            Value: !Ref KeyPairName
+          - !Ref AWS::NoValue
+
+        # ---------- CloudWatch Logs ----------
+        - Namespace: aws:elasticbeanstalk:cloudwatch:logs
+          OptionName: StreamLogs
+          Value: "true"
+
+        - Namespace: aws:elasticbeanstalk:cloudwatch:logs
+          OptionName: DeleteOnTerminate
+          Value: "true"
+
+        - Namespace: aws:elasticbeanstalk:cloudwatch:logs
+          OptionName: RetentionInDays
+          Value: "14"
+
+        - Namespace: aws:elasticbeanstalk:cloudwatch:logs:health
+          OptionName: HealthStreamingEnabled
+          Value: "true"
+
+Outputs:
+  EnvUrl:
+    Description: EB Environment URL
+    Value: !GetAtt BackbreakerEnv.EndpointURL
