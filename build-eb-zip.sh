@@ -9,7 +9,7 @@ echo "Building Spring Boot JAR..."
 
 cd "$PROJECT_ROOT"
 
-mvn -q -DskipTests package
+./mvnw -q clean package -Peb-lite -DskipTests
 
 JAR_FILE=$(ls target/*.jar | head -n 1)
 

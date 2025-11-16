@@ -16,13 +16,14 @@ public class ProductSeriesService {
         this.repo = repo;
     }
 
-    public void finalizeSeries(Long id) {
+    public boolean finalizeSeries(Long id) {
         log.debug("Finalizing series id={}", id);
         int updatedRows = repo.finalizeSeriesById(id);
         if (updatedRows == 0) {
             log.warn("Finalize request for series id={} did not update any rows", id);
-        } else {
-            log.info("Series id={} finalized ({} row(s) updated)", id, updatedRows);
+            return false;
         }
+        log.info("Series id={} finalized ({} row(s) updated)", id, updatedRows);
+        return true;
     }
 }

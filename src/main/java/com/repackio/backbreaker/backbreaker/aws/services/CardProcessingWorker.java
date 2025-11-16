@@ -1,7 +1,6 @@
 package com.repackio.backbreaker.backbreaker.aws.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.repackio.backbreaker.backbreaker.aws.dto.CardProcessingMessage;
 import com.repackio.backbreaker.backbreaker.models.CardProcessingStatus;
 import com.repackio.backbreaker.backbreaker.repositories.CardProcessingStatusRepository;
@@ -10,10 +9,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.sqs.SqsClient;
-import software.amazon.awssdk.services.sqs.model.*;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
+import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
 import java.awt.image.BufferedImage;
 import java.time.Instant;
@@ -22,6 +23,7 @@ import java.time.Instant;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "aws.sqs.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(value = "opencv.enabled", havingValue = "true")
 public class CardProcessingWorker {
 
     private final SqsClient sqsClient;

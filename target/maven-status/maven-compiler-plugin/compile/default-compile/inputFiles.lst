@@ -2,6 +2,7 @@
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/backbreaker/ServletInitializer.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/backbreaker/api/ProductSeriesController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/backbreaker/api/SeriesCardImageController.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/backbreaker/api/dto/SeriesFinalizeResponse.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/backbreaker/aws/AwsConfig.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/backbreaker/aws/controllers/RekognitionController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/backbreaker/aws/dto/CardProcessingMessage.java

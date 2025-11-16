@@ -3,6 +3,7 @@ package com.repackio.backbreaker.backbreaker.aws.services;
 import lombok.RequiredArgsConstructor;
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.awt.*;
@@ -10,6 +11,7 @@ import java.awt.image.BufferedImage;
 
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(value = "opencv.enabled", havingValue = "true")
 public class ImageCropService {
 
     static {
