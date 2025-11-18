@@ -75,7 +75,7 @@ Resources:
   DbSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub "backbreaker-db-${EnvironmentName}"
+      Name: !Sub "backbreaker/${EnvironmentName}/database/app"
       Description: Backbreaker DB credentials for environment
       SecretString: !Sub |
         {
@@ -118,30 +118,69 @@ Resources:
                 - ec2.amazonaws.com
             Action:
               - sts:AssumeRole
-      ManagedPolicyArns:
-        - !Sub "arn:aws:iam::${AWS::AccountId}:policy/repackio-universal-bedrock-permission"
       Policies:
-        - PolicyName: BackbreakerSecretsAndS3
+        - PolicyName: BackbreakerAppPermissions
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+              # Secrets Manager
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
-                Resource: "*"
+                  - secretsmanager:DescribeSecret
+                Resource: !Ref DbSecret
+
+              # Elastic Beanstalk S3 Bucket (for logs, etc.)
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::elasticbeanstalk-${AWS::Region}-${AWS::AccountId}/*"
+
+              # Application S3 Buckets
               - Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub "${RawUploadsBucketNonProd.Arn}/*"
+                  - !Sub "${ProcessedBucketNonProd.Arn}/*"
+              - Effect: Allow
+                Action:
                   - s3:ListBucket
-                Resource: "*"
+                Resource:
+                  - !GetAtt RawUploadsBucketNonProd.Arn
+                  - !GetAtt ProcessedBucketNonProd.Arn
+
+              # SQS
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
                   - sqs:ReceiveMessage
                   - sqs:DeleteMessage
                   - sqs:GetQueueUrl
+                  - sqs:GetQueueAttributes
+                Resource:
+                  - !GetAtt ProcessingQueue.Arn
+                  - !GetAtt ProcessingDLQ.Arn
+
+              # Bedrock
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
+
+              # Rekognition
+              - Effect: Allow
+                Action:
+                  - rekognition:DetectText
+                  - rekognition:DetectLabels
                 Resource: "*"
+
+              # CloudWatch Logs
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
@@ -195,7 +234,7 @@ Resources:
 
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: DB_SECRET_NAME
-          Value: !Sub "backbreaker-db-${EnvironmentName}"
+          Value: !Sub "backbreaker/${EnvironmentName}/database/app"
 
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: AWS_REGION

@@ -2,3 +2,10 @@
 *.zip
 *.jar
 *.original
+
+# Local development properties (contains credentials)
+application-local.properties
+
+# Environment files
+.env
+.env.local

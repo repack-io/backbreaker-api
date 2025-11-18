@@ -1,11 +1,13 @@
 package com.repackio.backbreaker.aws.services;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.repackio.backbreaker.aws.bedrock.BedrockModelConfig;
+import com.repackio.backbreaker.aws.bedrock.BedrockModelProvider;
+import com.repackio.backbreaker.aws.bedrock.BedrockRequestBuilder;
+import com.repackio.backbreaker.aws.bedrock.BedrockResponseParser;
 import com.repackio.backbreaker.aws.dto.CardAnalysisResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
@@ -32,34 +34,27 @@ public class BedrockVisionService {
     private final BedrockRuntimeClient bedrockClient;
     private final ObjectMapper objectMapper;
     private final ResourceLoader resourceLoader;
-
-    @Value("${bedrock.model.id:us.anthropic.claude-3-5-sonnet-20241022-v2:0}")
-    private String modelId;
-
-    @Value("${bedrock.max.tokens:1024}")
-    private int maxTokens;
-
-    @Value("${bedrock.temperature:0.1}")
-    private double temperature;
-
-    @Value("${bedrock.prompts.path:file:prompts/}")
-    private String promptsPath;
+    private final BedrockModelConfig modelConfig;
+    private final BedrockRequestBuilder requestBuilder;
+    private final BedrockResponseParser responseParser;
 
     // Cache for loaded prompts
     private final Map<String, String> promptCache = new ConcurrentHashMap<>();
 
     /**
-     * Analyzes a card image using Bedrock's Claude Sonnet vision model.
+     * Analyzes a card image using Bedrock vision model.
      * Returns bounding box coordinates and rotation information.
+     * Uses the "card-analysis" use case configuration.
      */
     public CardAnalysisResult analyzeCardImage(BufferedImage image) throws IOException {
         log.info("Analyzing card image with Bedrock ({}x{})", image.getWidth(), image.getHeight());
         String prompt = loadPrompt("card_analysis_v3.txt");
-        return invokeWithImage(image, prompt, CardAnalysisResult.class);
+        return invokeWithImage("card-analysis", image, prompt, CardAnalysisResult.class);
     }
 
     /**
      * Generic method to invoke Bedrock with an image and prompt, returning a typed response.
+     * Uses the default model configuration.
      *
      * @param image The image to analyze
      * @param prompt The prompt text
@@ -67,10 +62,65 @@ public class BedrockVisionService {
      * @return Parsed response of type T
      */
     public <T> T invokeWithImage(BufferedImage image, String prompt, Class<T> responseType) throws IOException {
-        String base64Image = encodeImageToBase64(image);
-        String requestBody = buildRequestBody(base64Image, prompt);
+        return invokeWithImage(null, image, prompt, responseType);
+    }
 
-        log.debug("Sending request to Bedrock model: {}", modelId);
+    /**
+     * Generic method to invoke Bedrock with multiple images (e.g., front/back of a card).
+     * Uses the default model configuration.
+     *
+     * @param images Array of images to analyze (e.g., [front, back])
+     * @param prompt The prompt text
+     * @param responseType The class type to deserialize the response into
+     * @return Parsed response of type T
+     */
+    public <T> T invokeWithImages(BufferedImage[] images, String prompt, Class<T> responseType) throws IOException {
+        return invokeWithImages(null, images, prompt, responseType);
+    }
+
+    /**
+     * Generic method to invoke Bedrock with an image and prompt, returning a typed response.
+     *
+     * @param useCase The use case (e.g., "card-analysis") to determine which model to use
+     * @param image The image to analyze
+     * @param prompt The prompt text
+     * @param responseType The class type to deserialize the response into
+     * @return Parsed response of type T
+     */
+    public <T> T invokeWithImage(String useCase, BufferedImage image, String prompt, Class<T> responseType) throws IOException {
+        return invokeWithImages(useCase, new BufferedImage[]{image}, prompt, responseType);
+    }
+
+    /**
+     * Generic method to invoke Bedrock with multiple images and prompt, returning a typed response.
+     *
+     * @param useCase The use case (e.g., "card-analysis") to determine which model to use
+     * @param images Array of images to analyze (e.g., front and back of a card)
+     * @param prompt The prompt text
+     * @param responseType The class type to deserialize the response into
+     * @return Parsed response of type T
+     */
+    public <T> T invokeWithImages(String useCase, BufferedImage[] images, String prompt, Class<T> responseType) throws IOException {
+        if (images == null || images.length == 0) {
+            throw new IllegalArgumentException("At least one image is required");
+        }
+
+        BedrockModelConfig.ModelSettings settings = modelConfig.getSettingsForUseCase(useCase);
+        String modelId = settings.getModelId();
+        BedrockModelProvider provider = BedrockModelProvider.fromModelId(modelId);
+
+        // Encode all images to base64
+        String[] base64Images = new String[images.length];
+        for (int i = 0; i < images.length; i++) {
+            base64Images[i] = encodeImageToBase64(images[i]);
+        }
+
+        String requestBody = requestBuilder.buildImageRequest(
+                provider, base64Images, prompt,
+                settings.getMaxTokens(), settings.getTemperature());
+
+        log.info("Invoking Bedrock model: {} (provider: {}, use case: {}, image count: {})",
+                modelId, provider, useCase, images.length);
 
         InvokeModelRequest request = InvokeModelRequest.builder()
                 .modelId(modelId)
@@ -81,20 +131,81 @@ public class BedrockVisionService {
         String responseBody = response.body().asUtf8String();
         log.debug("Bedrock response: {}", responseBody);
 
-        return parseTypedResponse(responseBody, responseType);
+        return responseParser.parseTypedResponse(provider, responseBody, responseType);
+    }
+
+    /**
+     * Generic method to invoke Bedrock with S3 image URLs (Claude only).
+     * More efficient than base64 for large images.
+     *
+     * @param useCase The use case to determine model settings
+     * @param s3Urls Array of S3 URLs (s3://bucket/key format)
+     * @param prompt The prompt text
+     * @param responseType The class type to deserialize the response into
+     * @return Parsed response of type T
+     */
+    public <T> T invokeWithS3Images(String useCase, String[] s3Urls, String prompt, Class<T> responseType) throws IOException {
+        if (s3Urls == null || s3Urls.length == 0) {
+            throw new IllegalArgumentException("At least one S3 URL is required");
+        }
+
+        BedrockModelConfig.ModelSettings settings = modelConfig.getSettingsForUseCase(useCase);
+        String modelId = settings.getModelId();
+        BedrockModelProvider provider = BedrockModelProvider.fromModelId(modelId);
+
+        if (provider != BedrockModelProvider.ANTHROPIC) {
+            throw new UnsupportedOperationException("S3 URLs are only supported for Claude models");
+        }
+
+        String requestBody = requestBuilder.buildImageRequestWithS3(
+                s3Urls, prompt,
+                settings.getMaxTokens(), settings.getTemperature());
+
+        log.info("Invoking Bedrock model: {} with S3 images (use case: {}, image count: {})",
+                modelId, useCase, s3Urls.length);
+
+        InvokeModelRequest request = InvokeModelRequest.builder()
+                .modelId(modelId)
+                .body(SdkBytes.fromUtf8String(requestBody))
+                .build();
+
+        InvokeModelResponse response = bedrockClient.invokeModel(request);
+        String responseBody = response.body().asUtf8String();
+        log.debug("Bedrock response: {}", responseBody);
+
+        return responseParser.parseTypedResponse(provider, responseBody, responseType);
     }
 
     /**
      * Generic method to invoke Bedrock with text-only prompt, returning a typed response.
+     * Uses the default model configuration.
      *
      * @param prompt The prompt text
      * @param responseType The class type to deserialize the response into
      * @return Parsed response of type T
      */
     public <T> T invokeWithText(String prompt, Class<T> responseType) throws IOException {
-        String requestBody = buildTextOnlyRequestBody(prompt);
+        return invokeWithText(null, prompt, responseType);
+    }
 
-        log.debug("Sending text-only request to Bedrock model: {}", modelId);
+    /**
+     * Generic method to invoke Bedrock with text-only prompt, returning a typed response.
+     *
+     * @param useCase The use case (e.g., "text-generation") to determine which model to use
+     * @param prompt The prompt text
+     * @param responseType The class type to deserialize the response into
+     * @return Parsed response of type T
+     */
+    public <T> T invokeWithText(String useCase, String prompt, Class<T> responseType) throws IOException {
+        BedrockModelConfig.ModelSettings settings = modelConfig.getSettingsForUseCase(useCase);
+        String modelId = settings.getModelId();
+        BedrockModelProvider provider = BedrockModelProvider.fromModelId(modelId);
+
+        String requestBody = requestBuilder.buildTextRequest(
+                provider, prompt,
+                settings.getMaxTokens(), settings.getTemperature());
+
+        log.info("Invoking Bedrock model: {} (provider: {}, use case: {})", modelId, provider, useCase);
 
         InvokeModelRequest request = InvokeModelRequest.builder()
                 .modelId(modelId)
@@ -105,7 +216,7 @@ public class BedrockVisionService {
         String responseBody = response.body().asUtf8String();
         log.debug("Bedrock response: {}", responseBody);
 
-        return parseTypedResponse(responseBody, responseType);
+        return responseParser.parseTypedResponse(provider, responseBody, responseType);
     }
 
     /**
@@ -118,7 +229,7 @@ public class BedrockVisionService {
     public String loadPrompt(String promptFileName) throws IOException {
         return promptCache.computeIfAbsent(promptFileName, fileName -> {
             try {
-                String resourcePath = promptsPath + fileName;
+                String resourcePath = modelConfig.getPromptsPath() + fileName;
                 Resource resource = resourceLoader.getResource(resourcePath);
 
                 if (!resource.exists()) {
@@ -132,111 +243,6 @@ public class BedrockVisionService {
                 throw new RuntimeException("Failed to load prompt: " + fileName, e);
             }
         });
-    }
-
-    private String buildRequestBody(String base64Image, String prompt) throws IOException {
-        // Build the Anthropic Messages API format
-        var payload = objectMapper.createObjectNode();
-        payload.put("anthropic_version", "bedrock-2023-05-31");
-        payload.put("max_tokens", maxTokens);
-        payload.put("temperature", temperature);
-
-        var messages = payload.putArray("messages");
-        var message = messages.addObject();
-        message.put("role", "user");
-
-        var content = message.putArray("content");
-
-        // Add image
-        var imageContent = content.addObject();
-        imageContent.put("type", "image");
-        var source = imageContent.putObject("source");
-        source.put("type", "base64");
-        source.put("media_type", "image/jpeg");
-        source.put("data", base64Image);
-
-        // Add text prompt
-        var textContent = content.addObject();
-        textContent.put("type", "text");
-        textContent.put("text", prompt);
-
-        return objectMapper.writeValueAsString(payload);
-    }
-
-    private String buildTextOnlyRequestBody(String prompt) throws IOException {
-        // Build the Anthropic Messages API format for text-only
-        var payload = objectMapper.createObjectNode();
-        payload.put("anthropic_version", "bedrock-2023-05-31");
-        payload.put("max_tokens", maxTokens);
-        payload.put("temperature", temperature);
-
-        var messages = payload.putArray("messages");
-        var message = messages.addObject();
-        message.put("role", "user");
-
-        var content = message.putArray("content");
-
-        // Add text prompt
-        var textContent = content.addObject();
-        textContent.put("type", "text");
-        textContent.put("text", prompt);
-
-        return objectMapper.writeValueAsString(payload);
-    }
-
-    private <T> T parseTypedResponse(String responseBody, Class<T> responseType) throws IOException {
-        JsonNode root = objectMapper.readTree(responseBody);
-
-        // Extract the text content from Claude's response
-        JsonNode contentArray = root.path("content");
-        if (!contentArray.isArray() || contentArray.isEmpty()) {
-            throw new IOException("Invalid Bedrock response: no content array");
-        }
-
-        String textResponse = contentArray.get(0).path("text").asText();
-        log.debug("Claude response text: {}", textResponse);
-
-        // Extract JSON from the response (it might be wrapped in markdown code blocks)
-        String jsonStr = extractJson(textResponse);
-
-        // Parse the typed response
-        T result = objectMapper.readValue(jsonStr, responseType);
-
-        // Log specific info for CardAnalysisResult
-        if (result instanceof CardAnalysisResult cardResult) {
-            log.info("Card analysis: bbox=[{}, {}, {}, {}], rotation={}, confidence={}",
-                    cardResult.getBoundingBox().getLeft(),
-                    cardResult.getBoundingBox().getTop(),
-                    cardResult.getBoundingBox().getWidth(),
-                    cardResult.getBoundingBox().getHeight(),
-                    cardResult.getRotationDegrees(),
-                    cardResult.getConfidence());
-        }
-
-        return result;
-    }
-
-    private String extractJson(String text) {
-        // Remove markdown code blocks if present
-        String cleaned = text.trim();
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7);
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3);
-        }
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3);
-        }
-
-        // Find the first '{' and last '}'
-        int start = cleaned.indexOf('{');
-        int end = cleaned.lastIndexOf('}');
-
-        if (start >= 0 && end > start) {
-            return cleaned.substring(start, end + 1).trim();
-        }
-
-        return cleaned.trim();
     }
 
     private String encodeImageToBase64(BufferedImage image) throws IOException {
