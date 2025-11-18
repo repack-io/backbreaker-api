@@ -23,7 +23,6 @@ import java.time.Instant;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "aws.sqs.enabled", havingValue = "true", matchIfMissing = true)
-@ConditionalOnProperty(value = "opencv.enabled", havingValue = "true")
 public class CardProcessingWorker {
 
     private final SqsClient sqsClient;
@@ -80,12 +79,9 @@ public class CardProcessingWorker {
         BufferedImage front = s3ImageService.downloadImage(uploadsBucket, msg.getFrontKey());
         BufferedImage back  = s3ImageService.downloadImage(uploadsBucket, msg.getBackKey());
 
-        // Process images
+        // Process images (Rekognition handles both cropping and orientation)
         BufferedImage frontCropped = imageCropService.cropCard(front);
         BufferedImage backCropped  = imageCropService.cropCard(back);
-
-        frontCropped = imageCropService.rotateIfNeeded(frontCropped);
-        backCropped  = imageCropService.rotateIfNeeded(backCropped);
 
         // Build processed S3 keys
         String frontProcessedKey = "processed/series/" + msg.getSeriesId() + "/cards/" + msg.getCardId() + "/front_cropped.jpg";
@@ -120,4 +116,5 @@ public class CardProcessingWorker {
 
         seriesCardRepository.save(card);
     }
+
 }

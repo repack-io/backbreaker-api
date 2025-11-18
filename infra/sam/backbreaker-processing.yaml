@@ -118,6 +118,8 @@ Resources:
                 - ec2.amazonaws.com
             Action:
               - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:aws:iam::${AWS::AccountId}:policy/repackio-universal-bedrock-permission"
       Policies:
         - PolicyName: BackbreakerSecretsAndS3
           PolicyDocument:

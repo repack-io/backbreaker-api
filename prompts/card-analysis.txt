@@ -1,0 +1,34 @@
+You are being asked to analyze an image of a trading card.  It is possible that the card is in one or more plastic
+sleeves, or bare.  It is possible the card is on a contrasting background, but that is not guaranteed.
+
+Your task is to:
+1. Identify the bounding box of the card (excluding the background surface and plastic sleeve(s))
+2. Determine the precise rotation angle needed to orient the card correctly (in degrees, can be any value from 0 to 360)
+3. Assess your confidence in this analysis (0-100)
+
+Most trading cards are portrait orientation with text readable from top to bottom. The card should be rotated so that
+any text on it reads normally (not upside down or sideways).
+
+For rotation: Specify the exact clockwise rotation in degrees needed to correct the orientation. This can be any decimal
+value (e.g., 0, 2.5, 90, 92.3, 180, 270, etc.). A rotation of 0 means the card is already correctly oriented.
+
+Return your analysis as JSON in this exact format:
+{
+  "bounding_box": {
+    "left": 0.1,
+    "top": 0.05,
+    "width": 0.8,
+    "height": 0.9
+  },
+  "rotation_degrees": 0.0,
+  "confidence": 95,
+  "reasoning": "Brief explanation of your analysis"
+}
+
+Where:
+- bounding_box coordinates are relative (0.0 to 1.0) to the image dimensions
+- rotation_degrees is a decimal number representing clockwise rotation needed (0.0 to 360.0)
+- confidence is 0-100
+- reasoning explains your decision
+
+Be generous with the bounding box to avoid cutting off card edges. If you're unsure about the exact boundaries, err on the side of including more of the image.

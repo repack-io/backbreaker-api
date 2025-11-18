@@ -1,9 +1,14 @@
 package com.repackio.backbreaker.backbreaker.services;
 
+import com.repackio.backbreaker.backbreaker.models.ProductSeries;
+import com.repackio.backbreaker.backbreaker.processing.SeriesCardProcessingService;
+import com.repackio.backbreaker.backbreaker.processing.SeriesProcessingReport;
 import com.repackio.backbreaker.backbreaker.repositories.ProductSeriesRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProductSeriesService {
@@ -11,19 +16,33 @@ public class ProductSeriesService {
     private static final Logger log = LoggerFactory.getLogger(ProductSeriesService.class);
 
     private final ProductSeriesRepository repo;
+    private final SeriesCardProcessingService processingService;
 
-    public ProductSeriesService(ProductSeriesRepository repo) {
+    public ProductSeriesService(ProductSeriesRepository repo,
+                                SeriesCardProcessingService processingService) {
         this.repo = repo;
+        this.processingService = processingService;
     }
 
-    public boolean finalizeSeries(Long id) {
+    @Transactional
+    public SeriesFinalizeResult finalizeSeries(Long id) {
         log.debug("Finalizing series id={}", id);
+        ProductSeries series = repo.findById(id.intValue())
+                .orElseThrow(() -> new EntityNotFoundException("Series %d not found".formatted(id)));
+
         int updatedRows = repo.finalizeSeriesById(id);
-        if (updatedRows == 0) {
+        boolean finalized = updatedRows > 0;
+        boolean processingStarted = false;
+        SeriesProcessingReport processingReport = null;
+
+        if (!finalized) {
             log.warn("Finalize request for series id={} did not update any rows", id);
-            return false;
+        } else {
+            log.info("Series id={} finalized", id);
+            processingService.processSeriesAsync(series.getId().longValue());
+            processingStarted = true;
         }
-        log.info("Series id={} finalized ({} row(s) updated)", id, updatedRows);
-        return true;
+
+        return new SeriesFinalizeResult(series.getId().longValue(), finalized, processingStarted, processingReport);
     }
 }

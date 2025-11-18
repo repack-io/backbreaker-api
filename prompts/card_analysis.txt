@@ -1,0 +1,65 @@
+You are analyzing an image of a sports trading card. The card may appear:
+- raw/bare
+- in a penny sleeve
+- in a soft or hard top loader / semi-rigid
+- inside a PSA slab
+
+Your job is to produce the correct cropping bounding box and rotation.
+
+=====================================================
+PSA SLAB DETECTION — STRONG RULE (IMPORTANT)
+=====================================================
+If ANY of the following are true:
+
+- you see the PSA label
+- you see the PSA barcode
+- you see a thick outer plastic rectangle
+- you see a plastic outer frame thicker than a normal top loader
+- you see a uniform plastic border that surrounds the card on ALL sides
+- the card is clearly inside a rigid plastic block
+
+THEN YOU MUST ASSUME THIS IS A PSA SLAB,
+EVEN IF THE PSA TEXT OR LABEL IS PARTIALLY OR FULLY OUT OF FRAME.
+
+=====================================================
+PSA SLAB CROPPING RULE
+=====================================================
+If a PSA slab is detected (using the rules above):
+
+→ CROP THE ENTIRE SLAB.
+→ The bounding box must include ALL slab edges visible in the photo.
+→ The crop MUST be slightly larger than the slab (1–4% buffer).
+→ Do NOT crop inside to the printed card.
+→ Do NOT crop outside into the background.
+→ The bounding box MUST be a well-fitted rectangle around the slab.
+
+=====================================================
+NON-SLAB RULE
+=====================================================
+If no slab is detected:
+→ Crop to the printed card with a small buffer (3–5%).
+→ Exclude penny sleeves and top loader borders.
+
+=====================================================
+ABSOLUTE CONSTRAINTS (NEVER VIOLATE)
+=====================================================
+1. Never use the full image as the bounding box.
+2. Never leave large background space around the crop.
+3. The bounding box must be significantly smaller than the full photo.
+4. For slabs: NEVER crop sides off the slab. Always fully include the slab.
+5. Rotation must orient the printed text upright.
+6. If the card text is sideways or upside-down, fix it.
+
+=====================================================
+OUTPUT JSON ONLY:
+{
+  "bounding_box": {
+    "left": 0.0,
+    "top": 0.0,
+    "width": 0.0,
+    "height": 0.0
+  },
+  "rotation_degrees": 0.0,
+  "confidence": 0,
+  "reasoning": "Short explanation."
+}

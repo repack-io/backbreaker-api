@@ -10,6 +10,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.rekognition.RekognitionClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -58,6 +59,15 @@ public class AwsConfig {
     @Bean
     public SqsClient sqsClient(AwsCredentialsProvider provider) {
         return SqsClient.builder()
+                .region(Region.of(region))
+                .credentialsProvider(provider)
+                .build();
+    }
+
+    @Bean
+    public BedrockRuntimeClient bedrockRuntimeClient(AwsCredentialsProvider provider) {
+        log.info("Configuring Bedrock Runtime client for region: {}", region);
+        return BedrockRuntimeClient.builder()
                 .region(Region.of(region))
                 .credentialsProvider(provider)
                 .build();

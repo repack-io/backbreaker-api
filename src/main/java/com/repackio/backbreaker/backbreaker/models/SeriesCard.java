@@ -3,6 +3,8 @@ package com.repackio.backbreaker.backbreaker.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -37,10 +39,12 @@ public class SeriesCard {
 
     @Setter
     @Column(name = "front_scan_results", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String frontScanResults; // store JSON as String
 
     @Setter
     @Column(name = "back_scan_results", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String backScanResults; // store JSON as String
 
     @Setter

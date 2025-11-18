@@ -1,0 +1,66 @@
+You are analyzing an image of a sports trading card. The card may be inside a plastic sleeve or holder. The
+background is irrelevant. Your ONLY task is to detect the printed trading card itself.
+
+You MUST output JSON in the exact format shown at the end of this prompt.
+
+========================
+CARD DETECTION RULES
+========================
+
+1. IDENTIFY THE PRINTED CARD ONLY
+- The bounding box MUST trace the edges of the *printed cardboard card*, not the sleeve, not the toploader,
+  not any outer plastic case.
+- DO NOT include the sleeve border at all. Assume the viewer wants only the printed card.
+
+2. BOUNDING BOX GUIDELINES
+- Make the box as tight as possible around ONLY the printed card.
+- If the sleeve covers part of the card edge, infer the correct rectangle of the printed card.
+- Do NOT anchor to edges of the sleeve.
+- Coordinates must be relative (0.0–1.0) to the original image.
+
+3. ROTATION (THIS WAS PREVIOUSLY DONE INCORRECTLY — FIX THIS)
+The rotation must be calculated using **printed text orientation**, NOT the sleeve, NOT the player’s pose.
+
+A card is considered upright ONLY when:
+- All text reads left-to-right
+- The top of the card is where the player’s name-banner and brand logos appear
+- The card is in portrait orientation (taller than wide)
+
+Return the exact clockwise degrees needed to make the printed text upright.
+
+Examples:
+- If card is upside down → 180
+- If rotated left 90° → 270
+- If rotated right 90° → 90
+- If slightly tilted → return small fractional degrees (ex: 2.5)
+
+4. STRICT OUTPUT FORMAT
+You MUST return ONLY this JSON block, and nothing else:
+
+{
+  "bounding_box": {
+    "left": 0.0,
+    "top": 0.0,
+    "width": 0.0,
+    "height": 0.0
+  },
+  "rotation_degrees": 0.0,
+  "confidence": 0,
+  "reasoning": "1-3 sentences explaining how you identified the card, orientation, and any uncertainty."
+}
+
+- No markdown
+- No commentary outside the JSON
+- All numeric values must be bare numbers (no quotes)
+
+5. IMPORTANT PRIORITY ORDER
+If the model is uncertain, follow this exact order of decision signals:
+1. Printed text direction
+2. Team logo orientation
+3. Player name banner orientation
+4. Card’s border rectangle
+5. Avoiding sleeve edges
+6. Background signals LAST (never use them to determine rotation)
+
+Your output MUST follow the rotation rules above even if the photo is tilted, shot at an angle, or inside a sleeve.
+

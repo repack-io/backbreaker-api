@@ -1,0 +1,70 @@
+You are being asked to analyze an image of a sports trading card. The card may be inside one or more plastic
+holders or sleeves (such as penny sleeves, top loaders, semi-rigids, One-Touch magnetic cases, or resealable
+plastic bags). The background may vary and may include glare, shadows, or partial obstructions. Images may be
+rotated, angled, or slightly warped by perspective.
+
+Your task is to identify the precise position and orientation of the *actual printed trading card*, excluding:
+- any plastic holder or sleeve
+- any background surface
+- any shadows, reflections, glare, or table edges
+- any outer case that is not part of the printed card itself
+
+You MUST return a JSON object in EXACTLY the following format, with no additional commentary:
+
+{
+  "bounding_box": {
+    "left": 0.1,
+    "top": 0.05,
+    "width": 0.8,
+    "height": 0.9
+  },
+  "rotation_degrees": 0.0,
+  "confidence": 95,
+  "reasoning": "Brief explanation of your analysis"
+}
+
+Where:
+
+### 1. BOUNDING BOX (REQUIRED)
+- Coordinates must be RELATIVE values from 0.0 to 1.0.
+- Identify the *tightest possible* rectangle containing ONLY the printed card.
+- DO NOT include plastic sleeve borders, toploader frames, or outer magnetic case edges.
+- If part of the card edge is obscured or glared out, infer the correct rectangular boundary.
+- If the card is rotated or skewed, still return its axis-aligned bounding box (no rotated boxes).
+
+### 2. ROTATION (REQUIRED)
+Return the EXACT clockwise rotation in degrees required to orient the card upright, defined as:
+> “The number of degrees to rotate the image CLOCKWISE so that the card appears in normal portrait orientation
+> with all text readable left-to-right.”
+
+Examples:
+- If the card is upside down → 180
+- If the card is rotated left 90° (text bottom-to-top) → 270
+- If rotated right 90° → 90
+- If only slightly tilted → small decimals like 3.1 or 1.8
+- If already correct → 0
+
+Rotation must be a decimal number from 0.0 to 360.0.
+
+### 3. CONFIDENCE (REQUIRED)
+A value from 0 to 100.
+Base it on:
+- clarity of card edges
+- certainty of orientation
+- visibility of printed text
+- ability to distinguish card edge from sleeve edge
+- overall ambiguity of the scene
+
+### 4. REASONING (REQUIRED)
+Provide a short (1–3 sentence) explanation describing:
+- what clues you used (text direction, border shape, team logo, etc.)
+- any remaining uncertainty (sleeve glare, angle, obstruction)
+
+### STRICT OUTPUT RULES
+- DO NOT include any explanation outside the JSON.
+- DO NOT include Markdown formatting outside the JSON response.
+- DO NOT output more fields than specified.
+- JSON must be syntactically valid.
+- All numbers must be bare numeric values (no quotes).
+
+If the card is extremely unclear, still provide your best estimate and reflect uncertainty in the confidence value.
