@@ -6,12 +6,10 @@ import com.repackio.backbreaker.aws.bedrock.BedrockModelProvider;
 import com.repackio.backbreaker.aws.bedrock.BedrockRequestBuilder;
 import com.repackio.backbreaker.aws.bedrock.BedrockResponseParser;
 import com.repackio.backbreaker.aws.dto.CardAnalysisResult;
+import com.repackio.backbreaker.services.AiPromptService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StreamUtils;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
@@ -21,10 +19,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -33,13 +28,10 @@ public class BedrockVisionService {
 
     private final BedrockRuntimeClient bedrockClient;
     private final ObjectMapper objectMapper;
-    private final ResourceLoader resourceLoader;
     private final BedrockModelConfig modelConfig;
     private final BedrockRequestBuilder requestBuilder;
     private final BedrockResponseParser responseParser;
-
-    // Cache for loaded prompts
-    private final Map<String, String> promptCache = new ConcurrentHashMap<>();
+    private final AiPromptService aiPromptService;
 
     /**
      * Analyzes a card image using Bedrock vision model.
@@ -48,7 +40,7 @@ public class BedrockVisionService {
      */
     public CardAnalysisResult analyzeCardImage(BufferedImage image) throws IOException {
         log.info("Analyzing card image with Bedrock ({}x{})", image.getWidth(), image.getHeight());
-        String prompt = loadPrompt("card_analysis_v3.txt");
+        String prompt = aiPromptService.loadPrompt("card_crop");
         return invokeWithImage("card-analysis", image, prompt, CardAnalysisResult.class);
     }
 
@@ -217,32 +209,6 @@ public class BedrockVisionService {
         log.debug("Bedrock response: {}", responseBody);
 
         return responseParser.parseTypedResponse(provider, responseBody, responseType);
-    }
-
-    /**
-     * Loads a prompt from the prompts directory.
-     * Prompts are cached after first load.
-     *
-     * @param promptFileName The filename of the prompt (e.g., "card-analysis.txt")
-     * @return The prompt text
-     */
-    public String loadPrompt(String promptFileName) throws IOException {
-        return promptCache.computeIfAbsent(promptFileName, fileName -> {
-            try {
-                String resourcePath = modelConfig.getPromptsPath() + fileName;
-                Resource resource = resourceLoader.getResource(resourcePath);
-
-                if (!resource.exists()) {
-                    throw new IOException("Prompt file not found: " + resourcePath);
-                }
-
-                String content = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
-                log.info("Loaded prompt from: {}", resourcePath);
-                return content;
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to load prompt: " + fileName, e);
-            }
-        });
     }
 
     private String encodeImageToBase64(BufferedImage image) throws IOException {

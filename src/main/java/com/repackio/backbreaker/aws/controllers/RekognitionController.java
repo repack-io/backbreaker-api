@@ -8,6 +8,9 @@ import software.amazon.awssdk.services.rekognition.model.CompareFacesResponse;
 import software.amazon.awssdk.services.rekognition.model.DetectLabelsResponse;
 import software.amazon.awssdk.services.rekognition.model.DetectTextResponse;
 
+/**
+ * TODO: I THINK THIS CLASS IS UNNECESSARY
+ */
 @RestController
 @RequestMapping("/api/rekognition")
 @RequiredArgsConstructor

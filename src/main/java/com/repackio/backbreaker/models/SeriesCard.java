@@ -56,6 +56,10 @@ public class SeriesCard {
     @Column(name = "processed_at")
     private Instant processedAt;
 
+    @Setter
+    @Column(name = "product_tier_id", nullable = false)
+    private Long productTierId;
+
     public SeriesCard() {
     }
 

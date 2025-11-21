@@ -1,8 +1,13 @@
 package com.repackio.backbreaker.models;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "product_series")
 public class ProductSeries {
@@ -16,8 +21,9 @@ public class ProductSeries {
     )
     private Integer id;
 
-    @Column(name = "product_id", nullable = false)
-    private Integer productId;
+    @JoinColumn(name = "product_id", nullable = false)
+    @ManyToOne
+    private BreakerProduct product;
 
     @Column(name = "series_num", nullable = false)
     private Integer seriesNum;
@@ -38,68 +44,11 @@ public class ProductSeries {
 
     public ProductSeries() {}
 
-    public ProductSeries(Integer productId, Integer seriesNum, LocalDateTime packDate) {
-        this.productId = productId;
+    public ProductSeries(BreakerProduct product, Integer seriesNum, LocalDateTime packDate) {
+        this.product = product;
         this.seriesNum = seriesNum;
         this.packDate = packDate;
         this.finalized = false;
     }
 
-    // ---- Getters / Setters ----
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public Integer getProductId() {
-        return productId;
-    }
-
-    public void setProductId(Integer productId) {
-        this.productId = productId;
-    }
-
-    public Integer getSeriesNum() {
-        return seriesNum;
-    }
-
-    public void setSeriesNum(Integer seriesNum) {
-        this.seriesNum = seriesNum;
-    }
-
-    public LocalDateTime getPackDate() {
-        return packDate;
-    }
-
-    public void setPackDate(LocalDateTime packDate) {
-        this.packDate = packDate;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public boolean isFinalized() {
-        return finalized;
-    }
-
-    public void setFinalized(boolean finalized) {
-        this.finalized = finalized;
-    }
-
-    public LocalDateTime getFinalizedAt() {
-        return finalizedAt;
-    }
-
-    public void setFinalizedAt(LocalDateTime finalizedAt) {
-        this.finalizedAt = finalizedAt;
-    }
 }

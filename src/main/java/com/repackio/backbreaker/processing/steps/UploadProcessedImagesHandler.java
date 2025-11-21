@@ -21,6 +21,9 @@ public class UploadProcessedImagesHandler implements CardProcessingHandler {
     @Value("${aws.s3.processedBucket}")
     private String processedBucket;
 
+    @Value("${aws.region}")
+    private String awsRegion;
+
     @Override
     public void handle(CardProcessingContext context) throws Exception {
         String baseKey = "processed/series/" + context.getSeries().getId() +
@@ -37,8 +40,8 @@ public class UploadProcessedImagesHandler implements CardProcessingHandler {
         s3ImageService.uploadImage(backLocation.bucket(), backLocation.key(),
                 fallbackImage(context.getBackProcessed(), context.getBackOriginal()));
 
-        String frontUrl = "s3://" + frontLocation.bucket() + "/" + frontLocation.key();
-        String backUrl = "s3://" + backLocation.bucket() + "/" + backLocation.key();
+        String frontUrl = frontLocation.toHttpsUrl(awsRegion);
+        String backUrl = backLocation.toHttpsUrl(awsRegion);
 
         context.getCard().setProcessedFrontImgUrl(frontUrl);
         context.getCard().setProcessedBackImgUrl(backUrl);

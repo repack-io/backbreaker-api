@@ -1,0 +1,27 @@
+Analyze these trading card images (front and back) and extract the following information in JSON format.
+
+Please identify:
+1. Name of person or character (first and last name if possible)
+2. Card category, for example: "baseball", "football", "basketball", "hockey", "other", "unknown"
+3. Team name, if applicable (sports cards, full team name, e.g., "New York Yankees" not "NYY", or "N/A")
+4. Parallel type (if any) - examples: "Base", "Refractor", "Chrome", "Gold", "Silver", "Rainbow", "Auto", "Relic", etc.
+5. Serial number (if visible)
+6. Estimated USD value range, based on available information from ebay, breaker platforms, or elsewhere
+7. Card year, if it spans 2 years, example 2022-2023, only use the lowest value year
+
+Return ONLY valid JSON in this exact format:
+
+{
+	"player_first_name": "string",
+    "player_last_name": "string",
+    "card_category": "string"
+    "team_name": "string",
+    "parallel_type": "string or null",
+    "serial_number": "string or null",
+    "card_year": "string or null",
+    "usd_value_range": "string or null",
+    "confidence": "high or medium or low"
+}
+
+If you cannot determine a value with confidence, use null for strings or false for booleans.
+Set confidence to "high" if you're very certain, "medium" if somewhat certain, "low" if uncertain.

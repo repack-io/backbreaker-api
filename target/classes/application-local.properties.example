@@ -1,0 +1,68 @@
+# ===========================================
+# LOCAL DEVELOPMENT CONFIGURATION
+# ===========================================
+# Copy this file to application-local.properties and customize for your local environment
+# Run with: ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+
+# ===========================================
+# DATABASE CONFIGURATION (Local)
+# ===========================================
+# For local development, you can either:
+# 1. Use a local PostgreSQL instance
+# 2. Connect to a dev RDS instance
+# 3. Use H2 in-memory database
+
+# Option 1: Local PostgreSQL
+spring.datasource.url=jdbc:postgresql://localhost:5432/backbreaker_dev
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+
+# Option 2: Dev RDS (copy credentials from AWS)
+#spring.config.import=aws-secretsmanager:backbreaker/dev/database/app
+#spring.datasource.url=jdbc:postgresql://${host}:${port}/${dbname}
+#spring.datasource.username=${username}
+#spring.datasource.password=${password}
+
+# ===========================================
+# BEDROCK MODEL CONFIGURATION (Local)
+# ===========================================
+
+# Quick model switching - uncomment one:
+#bedrock.default-model-id=claude-sonnet   # Default, best quality
+#bedrock.default-model-id=claude-haiku    # Faster, cheaper for testing
+#bedrock.default-model-id=llama3-90b      # Open source alternative
+#bedrock.default-model-id=llama3-vision   # Open source with vision
+
+# Use case specific models (optional)
+#bedrock.models.card-analysis.model-id=claude-sonnet
+#bedrock.models.card-analysis.temperature=0.05
+
+# ===========================================
+# AWS SERVICES (Local)
+# ===========================================
+
+# AWS region
+aws.region=us-east-2
+
+# S3 buckets (use dev buckets for local testing)
+aws.s3.uploadsBucket=repackio-breakers-uploads-dev
+aws.s3.processedBucket=repackio-processed-dev
+
+# SQS queue
+aws.sqs.queueUrl=https://sqs.us-east-2.amazonaws.com/123456789012/backbreaker-proc-dev
+aws.sqs.enabled=true
+
+# ===========================================
+# AWS CREDENTIALS (Local)
+# ===========================================
+# For local development, use AWS profile
+aws.profile=default
+
+# ===========================================
+# LOGGING (Local)
+# ===========================================
+
+# Set to DEBUG for more verbose logging
+logging.level.org.springframework.web=DEBUG
+logging.level.com.repackio.backbreaker=DEBUG
+logging.level.com.zaxxer.hikari=INFO

@@ -1,0 +1,34 @@
+Analyze these sports card images (front and back) and extract the following information in JSON format.
+
+Please identify:
+1. Player's first name and last name
+2. Player's card category, as in sport examples: "baseball", "football", "basketball", "hockey", "other"
+3. Team name (full team name, e.g., "New York Yankees" not "NYY")
+4. Parallel type (if any) - examples: "Base", "Refractor", "Chrome", "Gold", "Silver", "Rainbow", "Auto", "Relic", etc.
+5. Serial number (if visible) - look for "/XX" or "XX/XX" notation
+6. Card year (if visible)
+7. Card set/brand (e.g., "Topps", "Panini", "Upper Deck")
+8. Card number (if visible on the back)
+9. Whether it's a rookie card (look for "RC" or "ROOKIE" designation)
+10. Whether it has an autograph (signed card)
+11. Whether it has memorabilia/relic (jersey piece, bat piece, etc.)
+
+Return ONLY valid JSON in this exact format:
+{
+    "player_first_name": "string",
+    "player_last_name": "string",
+    "card_category": "string"
+    "team_name": "string",
+    "parallel_type": "string or null",
+    "serial_number": "string or null",
+    "card_year": "string or null",
+    "card_set": "string or null",
+    "card_number": "string or null",
+    "rookie_card": true or false,
+    "autograph": true or false,
+    "memorabilia": true or false,
+    "confidence": "high or medium or low"
+}
+
+If you cannot determine a value with confidence, use null for strings or false for booleans.
+Set confidence to "high" if you're very certain, "medium" if somewhat certain, "low" if uncertain.

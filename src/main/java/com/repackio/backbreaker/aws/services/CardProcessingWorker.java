@@ -19,6 +19,9 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import java.awt.image.BufferedImage;
 import java.time.Instant;
 
+/**
+ * TODO: I THINK THIS CLASS IS UNNECESSARY
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,6 +43,9 @@ public class CardProcessingWorker {
 
     @Value("${aws.sqs.queueUrl}")
     private String queueUrl;
+
+    @Value("${aws.region}")
+    private String awsRegion;
 
     //@Scheduled(fixedDelay = 2000)
     public void pollQueue() {
@@ -91,9 +97,11 @@ public class CardProcessingWorker {
         s3ImageService.uploadImage(processedBucket, frontProcessedKey, frontCropped);
         s3ImageService.uploadImage(processedBucket, backProcessedKey, backCropped);
 
-        // URLs
-        String frontProcessedUrl = "s3://" + processedBucket + "/" + frontProcessedKey;
-        String backProcessedUrl  = "s3://" + processedBucket + "/" + backProcessedKey;
+        // Build HTTPS URLs for mobile app
+        String frontProcessedUrl = String.format("https://%s.s3.%s.amazonaws.com/%s",
+                processedBucket, awsRegion, frontProcessedKey);
+        String backProcessedUrl = String.format("https://%s.s3.%s.amazonaws.com/%s",
+                processedBucket, awsRegion, backProcessedKey);
 
         // Build scan JSON
         String frontScanJson = objectMapper.createObjectNode()

@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * TODO: I THINK THIS CLASS IS UNNECESSARY
+ */
 @RestController
 @RequestMapping("/api/cards")
 public class SeriesCardImageController {

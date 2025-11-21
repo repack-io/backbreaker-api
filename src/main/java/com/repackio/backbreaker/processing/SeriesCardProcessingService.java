@@ -33,9 +33,16 @@ public class SeriesCardProcessingService {
     @Async
     public void processSeriesAsync(Long seriesId) {
         try {
-            productSeriesRepository.findById(seriesId.intValue())
-                    .ifPresentOrElse(this::processInternal, () ->
-                            log.warn("Series {} not found for processing", seriesId));
+            SeriesProcessingReport report = productSeriesRepository.findById(seriesId.intValue())
+                    .map(this::processInternal)
+                    .orElseGet(() -> {
+                        log.warn("Series {} not found for processing", seriesId);
+                        return null;
+                    });
+
+            if (report != null && !report.getFailures().isEmpty()) {
+                log.error(report.toString());
+            }
         } catch (Exception ex) {
             log.error("Processing job for series {} failed to start", seriesId, ex);
         }
