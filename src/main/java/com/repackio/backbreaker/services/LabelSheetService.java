@@ -24,6 +24,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -206,19 +208,20 @@ public class LabelSheetService {
     }
 
     /**
-     * Generate QR code data as JSON (excluding usd_value_range).
+     * Generate QR code data as a URL with Base64 encoded card ID.
      */
-    private String generateQRData(CardLabelData card) throws IOException {
-        Map<String, Object> qrData = new HashMap<>();
-        qrData.put("card_detail_id", card.getCardDetailId());
-        qrData.put("series_card_id", card.getSeriesCardId());
-        qrData.put("player_name", card.getPlayerName());
-        qrData.put("team_name", card.getTeamName());
-        qrData.put("card_year", card.getCardYear());
-        qrData.put("parallel_type", card.getParallelType());
-        qrData.put("serial_number", card.getSerialNumber());
-        qrData.put("tier_name", card.getTierName());
+    private String generateQRData(CardLabelData card) {
+        String seriesCardId = String.valueOf(card.getSeriesCardId());
+        String encodedCardId = encodeCardId(seriesCardId);
+        return "https://repacks.io/thisjustgothit?cardid=" + encodedCardId;
+    }
 
-        return objectMapper.writeValueAsString(qrData);
+    /**
+     * Encode the card ID using Base64 URL-safe encoding.
+     * The API can decode this using: new String(Base64.getUrlDecoder().decode(encodedCardId))
+     */
+    private String encodeCardId(String cardId) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(cardId.getBytes(StandardCharsets.UTF_8));
     }
 }

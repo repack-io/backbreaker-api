@@ -40,6 +40,8 @@ public class ImageCropService {
             // Use Bedrock to analyze the card
             CardAnalysisResult analysis = bedrockVisionService.analyzeCardImage(original);
 
+            log.info("Height greater than width: " + (original.getHeight() > original.getWidth()));
+
             // Log what we got back
             log.info("Bedrock returned - confidence: {}%, reasoning: {}",
                     analysis.getConfidence(),
@@ -57,30 +59,30 @@ public class ImageCropService {
                     box.getTop() * 100, bottomMargin * 100);
 
             log.info("Reasoning: {}", analysis.getReasoning());
-
+            log.info("Height greater than width: " + (original.getHeight() > original.getWidth()));
             // Check confidence threshold
             if (analysis.getConfidence() < confidenceThreshold) {
                 log.warn("Bedrock confidence {}% below threshold {}%, applying fallback crop",
                         analysis.getConfidence(), confidenceThreshold);
                 return processFallback(original);
             }
-
+            log.info("Height greater than width: " + (original.getHeight() > original.getWidth()));
             // Validate bounding box
             if (!isValidBoundingBox(box)) {
                 log.warn("Invalid bounding box detected, using fallback");
                 return processFallback(original);
             }
-
+            log.info("Height greater than width: " + (original.getHeight() > original.getWidth()));
             // Crop based on the bounding box
             BufferedImage cropped = cropWithBoundingBox(original, box);
-
+            log.info("Height greater than width: " + (original.getHeight() > original.getWidth()));
             log.info("Cropped result: {}x{} (original was {}x{})",
                     cropped.getWidth(), cropped.getHeight(),
                     original.getWidth(), original.getHeight());
 
             // Resize maintaining aspect ratio AND ORIENTATION
             BufferedImage resized = resizePreservingAspectRatio(cropped);
-
+            log.info("Height greater than width: " + (original.getHeight() > original.getWidth()));
             log.info("Final output: {}x{}", resized.getWidth(), resized.getHeight());
 
             return resized;
@@ -150,7 +152,7 @@ public class ImageCropService {
         int height = (int) Math.round(box.getHeight() * imgHeight);
 
         log.info("Pixel coordinates before padding - x={}, y={}, width={}, height={}", x, y, width, height);
-
+        log.info("Height greater than width: " + (image.getHeight() > image.getWidth()));
         // Add padding (can be 0 to disable)
         if (cropPaddingPercent > 0) {
             int hPadding = (int) Math.round(width * cropPaddingPercent / 100.0);
@@ -164,7 +166,7 @@ public class ImageCropService {
             log.info("After {}% padding - x={}, y={}, width={}, height={}",
                     cropPaddingPercent, x, y, width, height);
         }
-
+        log.info("Height greater than width: " + (image.getHeight() > image.getWidth()));
         // Validate crop dimensions
         if (x < 0 || y < 0 || width <= 0 || height <= 0 ||
                 x + width > imgWidth || y + height > imgHeight) {
@@ -193,7 +195,7 @@ public class ImageCropService {
         int cropY = (int) (height * cropPercent / 100.0);
         int cropWidth = width - 2 * cropX;
         int cropHeight = height - 2 * cropY;
-
+        log.info("Height greater than width: " + (img.getHeight() > img.getWidth()));
         if (cropWidth > 0 && cropHeight > 0) {
             log.info("Fallback center crop: {}x{} ({}% from edges)",
                     cropWidth, cropHeight, cropPercent);
@@ -215,7 +217,8 @@ public class ImageCropService {
         log.info("Resizing from {}x{}", originalWidth, originalHeight);
 
         // Calculate dimensions to fit within TARGET_SIZE while preserving aspect ratio
-        int targetWidth, targetHeight;
+        int targetWidth;
+        int targetHeight;
 
         if (originalWidth > originalHeight) {
             // Landscape - constrain width

@@ -13,7 +13,11 @@ Parameters:
 
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: Two subnets for EB instances (must be in same VPC)
+    Description: Two PRIVATE subnets for EB instances (must be in same VPC)
+
+  ELBSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Two PUBLIC subnets for the load balancer (must be in same VPC)
 
   KeyPairName:
     Type: String
@@ -57,16 +61,12 @@ Resources:
   #############################################
   # S3 Buckets
   #############################################
+  # Note: repackio-uploads-${EnvironmentName} is managed by the backend Lambda stack
 
   ProcessedBucketNonProd:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "repackio-processed-${EnvironmentName}"
-
-  RawUploadsBucketNonProd:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "repackio-breakers-uploads-${EnvironmentName}"
 
   #############################################
   # Secrets Manager - Database Secret
@@ -100,6 +100,20 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ProcessingDLQ.Arn
         maxReceiveCount: 5
+
+  #############################################
+  # VPC Endpoints for Lambda Functions
+  #############################################
+  #
+  # NOTE: Secrets Manager VPC Endpoint is managed separately in the Lambda backend stack
+  # to avoid duplication. Lambda functions in private subnets require this VPC endpoint
+  # to access AWS Secrets Manager without NAT Gateway.
+  #
+  # If deploying to a new environment, ensure the VPC endpoint exists:
+  # - Service: com.amazonaws.{region}.secretsmanager
+  # - Type: Interface
+  # - Subnets: Same as Lambda subnets
+  # - Private DNS: Enabled
 
   #############################################
   # IAM Role for Elastic Beanstalk EC2 Instances
@@ -145,13 +159,13 @@ Resources:
                   - s3:PutObject
                   - s3:DeleteObject
                 Resource:
-                  - !Sub "${RawUploadsBucketNonProd.Arn}/*"
+                  - !Sub "arn:aws:s3:::repackio-uploads-${EnvironmentName}/*"
                   - !Sub "${ProcessedBucketNonProd.Arn}/*"
               - Effect: Allow
                 Action:
                   - s3:ListBucket
                 Resource:
-                  - !GetAtt RawUploadsBucketNonProd.Arn
+                  - !Sub "arn:aws:s3:::repackio-uploads-${EnvironmentName}"
                   - !GetAtt ProcessedBucketNonProd.Arn
 
               # SQS
@@ -166,12 +180,14 @@ Resources:
                   - !GetAtt ProcessingQueue.Arn
                   - !GetAtt ProcessingDLQ.Arn
 
-              # Bedrock
+              # Bedrock - Foundation Models and Inference Profiles
               - Effect: Allow
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
-                Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*"
 
               # Rekognition
               - Effect: Allow
@@ -247,7 +263,7 @@ Resources:
         # ---------- S3 ----------
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: POOL_RAW_BUCKET
-          Value: !Sub "repackio-breakers-uploads-${EnvironmentName}"
+          Value: !Sub "repackio-uploads-${EnvironmentName}"
 
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: POOL_PROCESSED_BUCKET
@@ -269,11 +285,11 @@ Resources:
 
         - Namespace: aws:ec2:vpc
           OptionName: ELBSubnets
-          Value: !Join [ ",", [ !Select [0, !Ref SubnetIds], !Select [1, !Ref SubnetIds] ] ]
+          Value: !Join [ ",", [ !Select [0, !Ref ELBSubnetIds], !Select [1, !Ref ELBSubnetIds] ] ]
 
         - Namespace: aws:ec2:vpc
           OptionName: AssociatePublicIpAddress
-          Value: "true"
+          Value: "false"
 
         # ---------- EC2 INSTANCE PROFILE ----------
         - Namespace: aws:autoscaling:launchconfiguration
@@ -282,11 +298,21 @@ Resources:
 
         - !If
           - UseKeyPair
-          - 
+          -
             Namespace: aws:autoscaling:launchconfiguration
             OptionName: EC2KeyName
             Value: !Ref KeyPairName
           - !Ref AWS::NoValue
+
+        # ---------- Command Timeout ----------
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: Timeout
+          Value: "1200"
+
+        # ---------- Health Check Configuration ----------
+        - Namespace: aws:elasticbeanstalk:application
+          OptionName: Application Healthcheck URL
+          Value: /actuator/health
 
         # ---------- CloudWatch Logs ----------
         - Namespace: aws:elasticbeanstalk:cloudwatch:logs

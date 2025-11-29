@@ -1,10 +1,14 @@
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/BackbreakerApplication.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/ServletInitializer.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/AiPromptAdminController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/CardDetailsController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/HealthController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/ProductSeriesController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/SeriesCardImageController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/SeriesLabelSheetController.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/AiPromptHistoryResponse.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/AiPromptRequest.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/AiPromptResponse.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/CardDetailsExtractionRequest.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/CardDetailsExtractionResponse.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/CardLabelData.java
@@ -28,6 +32,8 @@
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/config/DatabaseConnectionLogger.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/config/SecretsManagerLogger.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/config/WebConfig.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/models/AiPrompt.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/models/AiPromptHistory.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/models/BreakerProduct.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/models/CardCategory.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/models/CardDetail.java
@@ -49,6 +55,8 @@
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/processing/steps/MarkProcessingCompleteHandler.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/processing/steps/MarkProcessingStatusHandler.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/processing/steps/UploadProcessedImagesHandler.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/AiPromptHistoryRepository.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/AiPromptRepository.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/CardCategoryRepository.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/CardDetailRepository.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/CardProcessingStatusRepository.java
@@ -56,9 +64,11 @@
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/ProductSeriesRepository.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/SeriesCardRepository.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/TeamRepository.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/AiPromptService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/CardDetailsExtractionService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/LabelSheetService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/ProductSeriesService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/QRCodeService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/SeriesCardService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/SeriesFinalizeResult.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/utils/ImageOrientationUtil.java

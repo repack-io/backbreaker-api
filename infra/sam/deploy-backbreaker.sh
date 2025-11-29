@@ -84,33 +84,59 @@ echo "Uploaded to: s3://$EB_BUCKET/$EB_KEY"
 echo
 
 ############################################
-# Discover subnets for the given VPC
+# Discover PRIVATE and PUBLIC subnets for the given VPC
 ############################################
-echo "Discovering subnets for VPC $VPC_ID..."
+echo "Discovering PRIVATE subnets for VPC $VPC_ID..."
 
-SUBNETS=$(aws ec2 describe-subnets \
-  --filters "Name=vpc-id,Values=$VPC_ID" \
+PRIVATE_SUBNETS=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=*private*" \
   --query "Subnets[].SubnetId" \
   --output text \
   --region "$REGION" || true)
 
-if [[ -z "$SUBNETS" ]]; then
-  echo "ERROR: No subnets found for VPC $VPC_ID in region $REGION"
+if [[ -z "$PRIVATE_SUBNETS" ]]; then
+  echo "ERROR: No private subnets found for VPC $VPC_ID in region $REGION"
   exit 1
 fi
 
-read -r -a SUBNET_ARRAY <<< "$SUBNETS"
+read -r -a PRIVATE_SUBNET_ARRAY <<< "$PRIVATE_SUBNETS"
 
-if [[ ${#SUBNET_ARRAY[@]} -lt 2 ]]; then
-  echo "ERROR: Need at least two subnets in VPC $VPC_ID, found: ${#SUBNET_ARRAY[@]}"
-  echo "Found subnets: ${SUBNET_ARRAY[*]}"
+if [[ ${#PRIVATE_SUBNET_ARRAY[@]} -lt 2 ]]; then
+  echo "ERROR: Need at least two private subnets in VPC $VPC_ID, found: ${#PRIVATE_SUBNET_ARRAY[@]}"
+  echo "Found subnets: ${PRIVATE_SUBNET_ARRAY[*]}"
   exit 1
 fi
 
-SUBNET_ONE="${SUBNET_ARRAY[0]}"
-SUBNET_TWO="${SUBNET_ARRAY[1]}"
+PRIVATE_SUBNET_ONE="${PRIVATE_SUBNET_ARRAY[0]}"
+PRIVATE_SUBNET_TWO="${PRIVATE_SUBNET_ARRAY[1]}"
 
-echo "Using subnets: $SUBNET_ONE, $SUBNET_TWO"
+echo "Using private subnets for instances: $PRIVATE_SUBNET_ONE, $PRIVATE_SUBNET_TWO"
+
+echo "Discovering PUBLIC subnets for VPC $VPC_ID..."
+
+PUBLIC_SUBNETS=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=*public*" \
+  --query "Subnets[].SubnetId" \
+  --output text \
+  --region "$REGION" || true)
+
+if [[ -z "$PUBLIC_SUBNETS" ]]; then
+  echo "ERROR: No public subnets found for VPC $VPC_ID in region $REGION"
+  exit 1
+fi
+
+read -r -a PUBLIC_SUBNET_ARRAY <<< "$PUBLIC_SUBNETS"
+
+if [[ ${#PUBLIC_SUBNET_ARRAY[@]} -lt 2 ]]; then
+  echo "ERROR: Need at least two public subnets in VPC $VPC_ID, found: ${#PUBLIC_SUBNET_ARRAY[@]}"
+  echo "Found subnets: ${PUBLIC_SUBNET_ARRAY[*]}"
+  exit 1
+fi
+
+PUBLIC_SUBNET_ONE="${PUBLIC_SUBNET_ARRAY[0]}"
+PUBLIC_SUBNET_TWO="${PUBLIC_SUBNET_ARRAY[1]}"
+
+echo "Using public subnets for load balancer: $PUBLIC_SUBNET_ONE, $PUBLIC_SUBNET_TWO"
 echo
 
 ############################################
@@ -147,7 +173,8 @@ echo
 PARAM_OVERRIDES=(
   EnvironmentName="$ENV"
   VpcId="$VPC_ID"
-  SubnetIds="${SUBNET_ONE},${SUBNET_TWO}"
+  SubnetIds="${PRIVATE_SUBNET_ONE},${PRIVATE_SUBNET_TWO}"
+  ELBSubnetIds="${PUBLIC_SUBNET_ONE},${PUBLIC_SUBNET_TWO}"
   EbAppVersionBucket="$EB_BUCKET"
   EbAppVersionKey="$EB_KEY"
 )

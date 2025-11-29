@@ -9,6 +9,7 @@ import com.repackio.backbreaker.models.Player;
 import com.repackio.backbreaker.models.SeriesCard;
 import com.repackio.backbreaker.models.Team;
 import com.repackio.backbreaker.repositories.*;
+import com.repackio.backbreaker.utils.ImageOrientationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
@@ -78,10 +80,10 @@ public class CardDetailsExtractionService {
         }
 
         // get the card category id (ai returns a string description, we need numeric id)
-        int DEFAULT_CATEGORY_ID = 6;
+        int defaultCategoryId = 6;
         Integer cardCategoryId = cardCategoryRepository.findIdByCategory(
                 extractedData.getCardCategory()
-        ).orElse(DEFAULT_CATEGORY_ID);
+        ).orElse(defaultCategoryId);
 
         // Get or create player
         Player player = getOrCreatePlayer(
@@ -120,7 +122,7 @@ public class CardDetailsExtractionService {
     /**
      * Analyze card images using Bedrock vision model.
      */
-    private ExtractedCardData analyzeCardImages(BufferedImage frontImage, BufferedImage backImage) {
+    private ExtractedCardData analyzeCardImages(BufferedImage frontImage, BufferedImage backImage) throws IOException {
         String prompt = buildAnalysisPrompt();
 
         BufferedImage[] images = {frontImage, backImage};
@@ -157,7 +159,9 @@ public class CardDetailsExtractionService {
         } else {
             // Download via HTTP/HTTPS
             try (InputStream inputStream = new URL(imageUrl).openStream()) {
-                return ImageIO.read(inputStream);
+                byte[] imageBytes = inputStream.readAllBytes();
+                BufferedImage image = ImageIO.read(new java.io.ByteArrayInputStream(imageBytes));
+                return ImageOrientationUtil.correctOrientation(imageBytes, image);
             }
         }
     }

@@ -45,7 +45,7 @@ spring.datasource.password=postgres
 aws.region=us-east-2
 
 # S3 buckets (use dev buckets for local testing)
-aws.s3.uploadsBucket=repackio-breakers-uploads-dev
+aws.s3.uploadsBucket=repackio-uploads-dev
 aws.s3.processedBucket=repackio-processed-dev
 
 # SQS queue

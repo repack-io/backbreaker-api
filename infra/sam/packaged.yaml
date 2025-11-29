@@ -120,7 +120,7 @@ Conditions:
             Action:
             - s3:GetObject
             Resource:
-            - Fn::Sub: arn:aws:s3:::repackio-breakers-uploads-${EnvironmentName}/*
+            - Fn::Sub: arn:aws:s3:::repackio-uploads-${EnvironmentName}/*
           - Effect: Allow
             Action:
             - s3:PutObject

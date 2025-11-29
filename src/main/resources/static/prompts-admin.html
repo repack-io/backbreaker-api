@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prompt Editor</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #111827;
+            --muted: #94a3b8;
+            --accent: #22d3ee;
+            --accent-2: #a855f7;
+            --border: #1f2937;
+            --text: #e2e8f0;
+            --danger: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Inter", "Segoe UI", sans-serif;
+            background: radial-gradient(circle at 10% 10%, #111827, #0b1224 45%), radial-gradient(circle at 90% 20%, #0f172a, #0b1224 40%);
+            color: var(--text);
+        }
+        header {
+            padding: 20px 24px;
+        }
+        h1 {
+            margin: 0 0 8px;
+            font-size: 22px;
+            letter-spacing: 0.4px;
+        }
+        .subtitle {
+            color: var(--muted);
+            margin: 0;
+            font-size: 14px;
+        }
+        main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            padding: 0 24px 24px;
+        }
+        @media (max-width: 980px) {
+            main { grid-template-columns: 1fr; }
+        }
+        .card {
+            background: linear-gradient(135deg, rgba(31,41,55,0.9), rgba(17,24,39,0.95));
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        button {
+            border: 1px solid transparent;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #0b1224;
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            transition: transform 120ms ease, filter 120ms ease;
+        }
+        button.secondary {
+            background: transparent;
+            color: var(--text);
+            border-color: var(--border);
+        }
+        button:active { transform: translateY(1px); }
+        .prompt-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .prompt-table th, .prompt-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .prompt-table th {
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        .prompt-table tr {
+            cursor: pointer;
+            transition: background 120ms ease;
+        }
+        .prompt-table tr:hover {
+            background: rgba(148, 163, 184, 0.06);
+        }
+        .prompt-table tr.active {
+            background: rgba(34, 211, 238, 0.08);
+        }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge.live { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .badge.inactive { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
+        form {
+            display: grid;
+            gap: 10px;
+        }
+        label {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 4px;
+            display: block;
+            letter-spacing: 0.2px;
+        }
+        input, textarea {
+            width: 100%;
+            background: #0b1224;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: var(--text);
+            font-size: 14px;
+            font-family: "Inter", monospace;
+        }
+        textarea { min-height: 220px; resize: vertical; }
+        .status {
+            margin: 8px 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(148, 163, 184, 0.1);
+            padding: 6px 10px;
+            border-radius: 999px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .history {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(148, 163, 184, 0.05);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .history-item:last-child { border-bottom: none; }
+        .muted {
+            color: var(--muted);
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>AI Prompt Editor</h1>
+    <p class="subtitle">Create and activate new prompt versions. Latest active version is used by the service.</p>
+</header>
+
+<main>
+    <section class="card">
+        <div class="toolbar">
+            <button id="refreshBtn">Refresh</button>
+            <button id="loadToFormBtn" class="secondary">Load selection into form</button>
+            <button id="showHistoryBtn" class="secondary">Show history</button>
+        </div>
+        <table class="prompt-table" id="promptTable">
+            <thead>
+            <tr>
+                <th>Key</th>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Status</th>
+                <th>Updated</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="status" id="tableStatus"></div>
+        <div class="history" id="historyPanel" hidden>
+            <div class="muted">Select a prompt and click "Show history" to load previous versions.</div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2 style="margin: 0 0 6px;">Publish new version</h2>
+        <p class="subtitle" style="margin-bottom: 12px;">Submitting saves a new active version and archives the previous one.</p>
+        <form id="promptForm">
+            <div>
+                <label for="promptKey">Prompt key</label>
+                <input id="promptKey" name="promptKey" required placeholder="card_crop">
+            </div>
+            <div>
+                <label for="name">Display name</label>
+                <input id="name" name="name" required placeholder="Card Crop Detection">
+            </div>
+            <div>
+                <label for="description">Description</label>
+                <input id="description" name="description" placeholder="What this prompt does">
+            </div>
+            <div>
+                <label for="promptText">Prompt text</label>
+                <textarea id="promptText" name="promptText" required placeholder="Paste the full prompt here..."></textarea>
+            </div>
+            <div>
+                <label for="changeReason">Change reason (audit)</label>
+                <textarea id="changeReason" name="changeReason" placeholder="Why is this prompt changing?"></textarea>
+            </div>
+            <button type="submit">Save & Activate</button>
+            <div class="status" id="formStatus"></div>
+        </form>
+    </section>
+</main>
+
+<script>
+    const tableBody = document.querySelector('#promptTable tbody');
+    const tableStatus = document.querySelector('#tableStatus');
+    const formStatus = document.querySelector('#formStatus');
+    const historyPanel = document.querySelector('#historyPanel');
+    let prompts = [];
+    let selectedPromptKey = null;
+
+    async function fetchPrompts() {
+        tableStatus.textContent = 'Loading...';
+        historyPanel.hidden = true;
+        try {
+            const res = await fetch('/admin/prompts');
+            if (!res.ok) throw new Error('Failed to load prompts');
+            prompts = await res.json();
+            renderTable();
+            tableStatus.textContent = prompts.length ? '' : 'No prompts found yet';
+        } catch (err) {
+            console.error(err);
+            tableStatus.textContent = 'Error loading prompts';
+        }
+    }
+
+    function renderTable() {
+        tableBody.innerHTML = '';
+        prompts.forEach(prompt => {
+            const tr = document.createElement('tr');
+            tr.dataset.key = prompt.promptKey;
+            if (selectedPromptKey === prompt.promptKey && prompt.isActive) tr.classList.add('active');
+            tr.innerHTML = `
+                <td>${prompt.promptKey}</td>
+                <td>${prompt.name ?? ''}</td>
+                <td>${prompt.version}</td>
+                <td>${prompt.isActive ? '<span class="badge live">active</span>' : '<span class="badge inactive">inactive</span>'}</td>
+                <td><span class="muted">${prompt.updatedAt ?? ''}</span></td>
+            `;
+            tr.addEventListener('click', () => {
+                selectedPromptKey = prompt.promptKey;
+                highlightSelection();
+            });
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function highlightSelection() {
+        document.querySelectorAll('.prompt-table tr').forEach(row => row.classList.remove('active'));
+        const target = Array.from(document.querySelectorAll('.prompt-table tr')).find(r => r.dataset.key === selectedPromptKey);
+        if (target) target.classList.add('active');
+    }
+
+    document.querySelector('#refreshBtn').addEventListener('click', fetchPrompts);
+
+    document.querySelector('#promptForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formStatus.textContent = 'Saving...';
+        const payload = {
+            promptKey: document.querySelector('#promptKey').value.trim(),
+            name: document.querySelector('#name').value.trim(),
+            description: document.querySelector('#description').value.trim(),
+            promptText: document.querySelector('#promptText').value.trim(),
+            changeReason: document.querySelector('#changeReason').value.trim()
+        };
+
+        try {
+            const res = await fetch('/admin/prompts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Save failed');
+            formStatus.textContent = 'Saved & activated.';
+            await fetchPrompts();
+            selectedPromptKey = payload.promptKey;
+            highlightSelection();
+        } catch (err) {
+            console.error(err);
+            formStatus.textContent = 'Error saving prompt.';
+        }
+    });
+
+    document.querySelector('#loadToFormBtn').addEventListener('click', () => {
+        if (!selectedPromptKey) {
+            formStatus.textContent = 'Select a prompt row first.';
+            return;
+        }
+        const prompt = prompts.find(p => p.promptKey === selectedPromptKey && p.isActive) ||
+            prompts.find(p => p.promptKey === selectedPromptKey);
+        if (!prompt) return;
+        document.querySelector('#promptKey').value = prompt.promptKey;
+        document.querySelector('#name').value = prompt.name ?? '';
+        document.querySelector('#description').value = prompt.description ?? '';
+        document.querySelector('#promptText').value = prompt.promptText ?? '';
+        document.querySelector('#changeReason').value = '';
+        formStatus.textContent = 'Loaded selection into form. Edit and save to publish new version.';
+    });
+
+    document.querySelector('#showHistoryBtn').addEventListener('click', async () => {
+        if (!selectedPromptKey) {
+            historyPanel.hidden = false;
+            historyPanel.innerHTML = '<div class="muted">Select a prompt first.</div>';
+            return;
+        }
+        historyPanel.hidden = false;
+        historyPanel.innerHTML = '<div class="muted">Loading history...</div>';
+        try {
+            const res = await fetch(`/admin/prompts/${encodeURIComponent(selectedPromptKey)}/history`);
+            if (!res.ok) throw new Error('Failed to load history');
+            const history = await res.json();
+            if (!history.length) {
+                historyPanel.innerHTML = '<div class="muted">No history yet.</div>';
+                return;
+            }
+            historyPanel.innerHTML = history.map(item => `
+                <div class="history-item">
+                    <div><strong>v${item.version}</strong> ${item.name ?? ''}</div>
+                    <div class="muted">archived ${item.archivedAt ?? ''}</div>
+                    ${item.changeReason ? `<div class="muted">reason: ${item.changeReason}</div>` : ''}
+                    <div class="muted">active at time: ${item.isActive ? 'yes' : 'no'}</div>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error(err);
+            historyPanel.innerHTML = '<div class="muted">Error loading history.</div>';
+        }
+    });
+
+    fetchPrompts();
+</script>
+</body>
+</html>

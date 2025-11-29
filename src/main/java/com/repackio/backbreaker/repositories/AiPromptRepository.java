@@ -14,4 +14,9 @@ public interface AiPromptRepository extends JpaRepository<AiPrompt, Integer> {
      * Returns the most recent active version of the prompt.
      */
     Optional<AiPrompt> findFirstByPromptKeyAndIsActiveTrueOrderByVersionDesc(String promptKey);
+
+    /**
+     * Find the latest prompt (any status) by key.
+     */
+    Optional<AiPrompt> findFirstByPromptKeyOrderByVersionDesc(String promptKey);
 }
