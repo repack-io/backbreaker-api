@@ -181,13 +181,14 @@ Resources:
                   - !GetAtt ProcessingDLQ.Arn
 
               # Bedrock - Foundation Models and Inference Profiles
+              # Allows cross-region access since models may be called in different regions
               - Effect: Allow
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
                 Resource:
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
-                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*"
+                  - "arn:aws:bedrock:*::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*"
 
               # Rekognition
               - Effect: Allow
