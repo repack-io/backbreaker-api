@@ -13,9 +13,6 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * REST API for extracting detailed card information using AI vision analysis.
- */
-/**
  * TODO: I THINK THIS CLASS IS UNNECESSARY
  */
 @Slf4j

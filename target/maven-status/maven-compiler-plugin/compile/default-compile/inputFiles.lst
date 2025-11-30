@@ -6,6 +6,7 @@
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/ProductSeriesController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/SeriesCardImageController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/SeriesLabelSheetController.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/ThisGotHitController.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/AiPromptHistoryResponse.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/AiPromptRequest.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/AiPromptResponse.java
@@ -15,6 +16,7 @@
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/CardProcessingFailureResponse.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/ExtractedCardData.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/SeriesFinalizeResponse.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/api/dto/ThisGotHitRequest.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/aws/AwsConfig.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/aws/bedrock/BedrockModelConfig.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/aws/bedrock/BedrockModelProvider.java

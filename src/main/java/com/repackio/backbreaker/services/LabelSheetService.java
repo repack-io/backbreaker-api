@@ -17,22 +17,20 @@ import com.itextpdf.layout.properties.VerticalAlignment;
 import com.repackio.backbreaker.api.dto.CardLabelData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Service for generating Avery 94103 label sheets as PDF files.
- *
  * Avery 94103 Specifications:
  * - Label size: 1" x 1" (72 points x 72 points in PDF)
  * - 48 labels per sheet (6 columns x 8 rows)
@@ -46,6 +44,7 @@ public class LabelSheetService {
 
     private final QRCodeService qrCodeService;
     private final ObjectMapper objectMapper;
+    private final Environment environment;
 
     // Avery 94103 specifications (in points: 1 inch = 72 points)
     private static final float LABEL_WIDTH = 72f;  // 1 inch
@@ -118,9 +117,7 @@ public class LabelSheetService {
      */
     private Table createLabelTable() {
         float[] columnWidths = new float[LABELS_PER_ROW];
-        for (int i = 0; i < LABELS_PER_ROW; i++) {
-            columnWidths[i] = LABEL_WIDTH;
-        }
+        Arrays.fill(columnWidths, LABEL_WIDTH);
 
         Table table = new Table(UnitValue.createPointArray(columnWidths));
         table.setWidth(UnitValue.createPointValue(LABEL_WIDTH * LABELS_PER_ROW));
@@ -171,13 +168,13 @@ public class LabelSheetService {
                 details.append(card.getCardYear());
             }
             if (card.getParallelType() != null && !card.getParallelType().equalsIgnoreCase("Base")) {
-                if (details.length() > 0) {
+                if (details.isEmpty()) {
                     details.append(" ");
                 }
                 details.append(card.getParallelType());
             }
 
-            if (details.length() > 0) {
+            if (details.isEmpty()) {
                 Paragraph detailsPara = new Paragraph(details.toString())
                         .setFontSize(FONT_SIZE)
                         .setTextAlignment(TextAlignment.CENTER)
@@ -213,7 +210,7 @@ public class LabelSheetService {
     private String generateQRData(CardLabelData card) {
         String seriesCardId = String.valueOf(card.getSeriesCardId());
         String encodedCardId = encodeCardId(seriesCardId);
-        return "https://repacks.io/thisjustgothit?cardid=" + encodedCardId;
+        return environment.getProperty("url.labelsheet", "NOT_SET") + "/thisjustgothit?cardid=" + encodedCardId;
     }
 
     /**

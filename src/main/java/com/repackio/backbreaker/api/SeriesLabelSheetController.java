@@ -81,7 +81,7 @@ public class SeriesLabelSheetController {
             // Return PDF as downloadable file
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", series.getProduct().getProductName() + "_series_" + seriesId + "_labels.pdf");
+            headers.setContentDispositionFormData("attachment", series.getProduct().getProductName() + "_series_" + series.getSeriesNum() + "_labels.pdf");
             headers.setContentLength(pdfBytes.length);
 
             log.info("Successfully generated label sheet PDF for series {} with {} labels ({} bytes)",

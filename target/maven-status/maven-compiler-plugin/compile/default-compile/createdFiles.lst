@@ -41,11 +41,13 @@ com/repackio/backbreaker/services/LabelSheetService.class
 com/repackio/backbreaker/processing/steps/MarkProcessingStatusHandler.class
 com/repackio/backbreaker/aws/dto/CardAnalysisResult$BoundingBoxDto.class
 com/repackio/backbreaker/services/CardDetailsExtractionService.class
+com/repackio/backbreaker/api/dto/ThisGotHitRequest.class
 com/repackio/backbreaker/processing/steps/CropCardImagesHandler.class
 com/repackio/backbreaker/aws/services/BedrockVisionService.class
 com/repackio/backbreaker/repositories/PlayerRepository.class
 com/repackio/backbreaker/config/DatabaseConnectionLogger.class
 com/repackio/backbreaker/api/dto/SeriesFinalizeResponse.class
+com/repackio/backbreaker/api/ThisGotHitController.class
 com/repackio/backbreaker/models/AiPrompt.class
 com/repackio/backbreaker/aws/bedrock/BedrockRequestBuilder$1.class
 com/repackio/backbreaker/repositories/SeriesCardRepository.class
