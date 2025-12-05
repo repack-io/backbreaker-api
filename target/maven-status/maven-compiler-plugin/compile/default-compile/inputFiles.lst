@@ -68,6 +68,7 @@
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/repositories/TeamRepository.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/AiPromptService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/CardDetailsExtractionService.java
+/home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/CardTokenService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/LabelSheetService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/ProductSeriesService.java
 /home/joel/Projects/java/backbreaker-api/src/main/java/com/repackio/backbreaker/services/QRCodeService.java

@@ -172,9 +172,60 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <profiles>
+                        <profile>${spring.profiles.active}</profile>
+                    </profiles>
+                </configuration>
             </plugin>
 
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Local Development Profiles -->
+        <profile>
+            <id>local-dev</id>
+            <properties>
+                <spring.profiles.active>local-dev</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>local-qa</id>
+            <properties>
+                <spring.profiles.active>local-qa</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>local-test</id>
+            <properties>
+                <spring.profiles.active>local-test</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <!-- AWS/Elastic Beanstalk Profiles (for reference, not typically used in Maven builds) -->
+        <profile>
+            <id>aws-dev</id>
+            <properties>
+                <spring.profiles.active>aws-dev</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>aws-qa</id>
+            <properties>
+                <spring.profiles.active>aws-qa</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>aws-prd</id>
+            <properties>
+                <spring.profiles.active>aws-prd</spring.profiles.active>
+            </properties>
+        </profile>
+    </profiles>
 
 </project>

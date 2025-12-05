@@ -5,6 +5,7 @@
 
 # Local development properties (contains credentials)
 application-local.properties
+application-local-*.properties
 
 # Environment files
 .env

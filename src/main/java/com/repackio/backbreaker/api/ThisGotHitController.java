@@ -1,15 +1,20 @@
 package com.repackio.backbreaker.api;
 
 import com.repackio.backbreaker.models.CardDetail;
+import com.repackio.backbreaker.models.SeriesCard;
 import com.repackio.backbreaker.repositories.CardDetailRepository;
+import com.repackio.backbreaker.repositories.SeriesCardRepository;
+import com.repackio.backbreaker.services.CardTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 
 @Slf4j
 @RestController
@@ -19,18 +24,19 @@ import java.util.Base64;
 public class ThisGotHitController {
 
     private final CardDetailRepository cardDetailRepository;
+    private final SeriesCardRepository seriesCardRepository;
+    private final CardTokenService cardTokenService;
 
     @GetMapping
-    public ResponseEntity<?> setCardAsHit(@RequestParam("cardid") String encodedCardId) {
+    public ResponseEntity<?> setCardAsHit(@RequestParam("cardid") String signedToken) {
         try {
-            // Decode the Base64 encoded series_card_id
-            String decodedCardId = new String(Base64.getUrlDecoder().decode(encodedCardId), StandardCharsets.UTF_8);
-            Long seriesCardId = Long.parseLong(decodedCardId);
+            // Validate the signed token and extract the series_card_id
+            Long seriesCardId = cardTokenService.validateAndExtract(signedToken);
 
-            log.info("Decoded cardid: {} -> series_card_id: {}", encodedCardId, seriesCardId);
+            log.info("Validated token -> series_card_id: {}", seriesCardId);
 
-            // Find CardDetail by series_card_id
-            CardDetail cardDetail = cardDetailRepository.findBySeriesCardId(seriesCardId)
+            // Find CardDetail by series_card_id with player eagerly loaded
+            CardDetail cardDetail = cardDetailRepository.findBySeriesCardIdWithPlayerAndTeam(seriesCardId)
                     .orElseThrow(() -> {
                         log.warn("No card detail found for series_card_id: {}", seriesCardId);
                         return new IllegalArgumentException("Card not found for series_card_id: " + seriesCardId);
@@ -42,19 +48,107 @@ public class ThisGotHitController {
 
             log.info("Card detail {} marked as hit for series_card_id: {}", cardDetail.getId(), seriesCardId);
 
-            return ResponseEntity.ok().build();
+            // Fetch the SeriesCard to get the images
+            SeriesCard seriesCard = seriesCardRepository.findById(seriesCardId)
+                    .orElseThrow(() -> new IllegalArgumentException("SeriesCard not found for id: " + seriesCardId));
+
+            // Get player name
+            String playerName = cardDetail.getPlayer() != null
+                    ? cardDetail.getPlayer().getFullName()
+                    : "Unknown Player";
+
+            // Build and return HTML success page
+            String html = buildSuccessPage(
+                    playerName,
+                    seriesCard.getProcessedFrontImgUrl(),
+                    seriesCard.getProcessedBackImgUrl()
+            );
+
+            return ResponseEntity
+                    .ok()
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(html);
 
         } catch (IllegalArgumentException e) {
-            log.error("Invalid encoded cardid: {}", encodedCardId, e);
+            log.error("Invalid or tampered token: {}", signedToken, e);
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid card ID format");
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(buildErrorPage("Invalid Token", "This link appears to be invalid or has been tampered with."));
         } catch (Exception e) {
-            log.error("Error processing cardid: {}", encodedCardId, e);
+            log.error("Error processing token: {}", signedToken, e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error processing request");
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(buildErrorPage("Error processing request", e.getMessage()));
         }
+    }
+
+    private String buildSuccessPage(String playerName, String frontImgUrl, String backImgUrl) {
+        try {
+            String template = loadTemplate("templates/card-hit-success.html");
+            return template
+                    .replace("{{PLAYER_NAME}}", escapeHtml(playerName))
+                    .replace("{{FRONT_IMG_URL}}", escapeHtml(frontImgUrl != null ? frontImgUrl : ""))
+                    .replace("{{BACK_IMG_URL}}", escapeHtml(backImgUrl != null ? backImgUrl : ""));
+        } catch (IOException e) {
+            log.error("Failed to load success template", e);
+            return buildFallbackSuccessPage(playerName, frontImgUrl, backImgUrl);
+        }
+    }
+
+    private String buildFallbackSuccessPage(String playerName, String frontImgUrl, String backImgUrl) {
+        return """
+                <!DOCTYPE html>
+                <html><head><meta charset="UTF-8"><title>Success</title></head>
+                <body style="font-family:sans-serif;text-align:center;padding:40px;">
+                    <h1>Card Hit Successfully!</h1>
+                    <h2>%s</h2>
+                    <p>Front: <a href="%s">View</a></p>
+                    <p>Back: <a href="%s">View</a></p>
+                </body></html>
+                """.formatted(escapeHtml(playerName),
+                             escapeHtml(frontImgUrl != null ? frontImgUrl : ""),
+                             escapeHtml(backImgUrl != null ? backImgUrl : ""));
+    }
+
+    private String buildErrorPage(String title, String message) {
+        try {
+            String template = loadTemplate("templates/card-hit-error.html");
+            return template
+                    .replace("{{ERROR_TITLE}}", escapeHtml(title))
+                    .replace("{{ERROR_MESSAGE}}", escapeHtml(message));
+        } catch (IOException e) {
+            log.error("Failed to load error template", e);
+            return buildFallbackErrorPage(title, message);
+        }
+    }
+
+    private String buildFallbackErrorPage(String title, String message) {
+        return """
+                <!DOCTYPE html>
+                <html><head><meta charset="UTF-8"><title>Error</title></head>
+                <body style="font-family:sans-serif;text-align:center;padding:40px;">
+                    <h1 style="color:#e53e3e;">%s</h1>
+                    <p>%s</p>
+                </body></html>
+                """.formatted(escapeHtml(title), escapeHtml(message));
+    }
+
+    private String loadTemplate(String templatePath) throws IOException {
+        ClassPathResource resource = new ClassPathResource(templatePath);
+        return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+    }
+
+    private String escapeHtml(String input) {
+        if (input == null) {
+            return "";
+        }
+        return input.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#x27;");
     }
 
 }

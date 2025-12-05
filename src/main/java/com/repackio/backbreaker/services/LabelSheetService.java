@@ -45,6 +45,7 @@ public class LabelSheetService {
     private final QRCodeService qrCodeService;
     private final ObjectMapper objectMapper;
     private final Environment environment;
+    private final CardTokenService cardTokenService;
 
     // Avery 94103 specifications (in points: 1 inch = 72 points)
     private static final float LABEL_WIDTH = 72f;  // 1 inch
@@ -205,20 +206,10 @@ public class LabelSheetService {
     }
 
     /**
-     * Generate QR code data as a URL with Base64 encoded card ID.
+     * Generate QR code data as a URL with a signed, tamper-proof token.
      */
     private String generateQRData(CardLabelData card) {
-        String seriesCardId = String.valueOf(card.getSeriesCardId());
-        String encodedCardId = encodeCardId(seriesCardId);
-        return environment.getProperty("url.labelsheet", "NOT_SET") + "/thisjustgothit?cardid=" + encodedCardId;
-    }
-
-    /**
-     * Encode the card ID using Base64 URL-safe encoding.
-     * The API can decode this using: new String(Base64.getUrlDecoder().decode(encodedCardId))
-     */
-    private String encodeCardId(String cardId) {
-        return Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(cardId.getBytes(StandardCharsets.UTF_8));
+        String signedToken = cardTokenService.generateToken(card.getSeriesCardId());
+        return environment.getProperty("url.labelsheet", "NOT_SET") + "/thisjustgothit?cardid=" + signedToken;
     }
 }

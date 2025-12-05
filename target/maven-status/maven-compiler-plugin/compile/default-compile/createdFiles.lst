@@ -46,6 +46,7 @@ com/repackio/backbreaker/processing/steps/CropCardImagesHandler.class
 com/repackio/backbreaker/aws/services/BedrockVisionService.class
 com/repackio/backbreaker/repositories/PlayerRepository.class
 com/repackio/backbreaker/config/DatabaseConnectionLogger.class
+com/repackio/backbreaker/services/CardTokenService.class
 com/repackio/backbreaker/api/dto/SeriesFinalizeResponse.class
 com/repackio/backbreaker/api/ThisGotHitController.class
 com/repackio/backbreaker/models/AiPrompt.class
