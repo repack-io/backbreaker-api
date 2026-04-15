@@ -40,6 +40,13 @@ public class BedrockResponseParser {
         String textResponse = extractText(provider, responseBody);
         log.debug("Model response text: {}", textResponse);
 
+        // If caller just wants the raw text, return it directly without JSON parsing
+        if (responseType == String.class) {
+            @SuppressWarnings("unchecked")
+            T result = (T) textResponse.trim();
+            return result;
+        }
+
         // Extract JSON from the response (it might be wrapped in markdown code blocks)
         String jsonStr = extractJson(textResponse);
 

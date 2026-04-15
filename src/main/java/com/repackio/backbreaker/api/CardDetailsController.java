@@ -2,7 +2,10 @@ package com.repackio.backbreaker.api;
 
 import com.repackio.backbreaker.api.dto.CardDetailsExtractionRequest;
 import com.repackio.backbreaker.api.dto.CardDetailsExtractionResponse;
+import com.repackio.backbreaker.api.dto.ExtractedCardData;
+import com.repackio.backbreaker.processing.SeriesCardProcessingService;
 import com.repackio.backbreaker.services.CardDetailsExtractionService;
+import com.repackio.backbreaker.services.CardFactoidService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -23,6 +26,8 @@ import java.util.Map;
 public class CardDetailsController {
 
     private final CardDetailsExtractionService extractionService;
+    private final CardFactoidService cardFactoidService;
+    private final SeriesCardProcessingService processingService;
 
     /**
      * Extract card details from front and back images using AI.
@@ -77,6 +82,18 @@ public class CardDetailsController {
             log.info("Successfully extracted card details for series_card_id={}, card_detail_id={}",
                 request.getSeriesCardId(), response.getCardDetailId());
 
+            ExtractedCardData extracted = response.getExtractedData();
+            try {
+                cardFactoidService.generateAndSave(
+                        response.getCardDetailId(),
+                        extracted.getPlayerFirstName(),
+                        extracted.getPlayerLastName(),
+                        extracted.getCardCategory()
+                );
+            } catch (Exception e) {
+                log.warn("Factoid generation failed for cardDetailId={}: {}", response.getCardDetailId(), e.getMessage());
+            }
+
             return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
@@ -105,5 +122,16 @@ public class CardDetailsController {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "Internal server error: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Delete and re-extract details + factoid for a single card.
+     * POST /api/cards/{seriesCardId}/reprocess
+     */
+    @PostMapping("/{seriesCardId}/reprocess")
+    public ResponseEntity<?> reprocessCard(@PathVariable Long seriesCardId) {
+        log.info("Reprocess request for series_card_id={}", seriesCardId);
+        processingService.reprocessCardAsync(seriesCardId);
+        return ResponseEntity.accepted().body(Map.of("message", "Reprocessing started for series_card_id=" + seriesCardId));
     }
 }

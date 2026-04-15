@@ -10,6 +10,7 @@ import com.repackio.backbreaker.models.SeriesCard;
 import com.repackio.backbreaker.models.Team;
 import com.repackio.backbreaker.repositories.*;
 import com.repackio.backbreaker.utils.ImageOrientationUtil;
+import com.repackio.backbreaker.utils.UsdValueUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -110,6 +111,7 @@ public class CardDetailsExtractionService {
         cardDetail.setProductTierId(seriesCard.getProductTierId());
         cardDetail.setCardYear(Integer.valueOf(extractedData.getCardYear()));
         cardDetail.setUsdValueRange(extractedData.getUsdValueRange());
+        cardDetail.setUsdValue(UsdValueUtil.parseAverageValue(extractedData.getUsdValueRange()));
         cardDetail.setConfidence(extractedData.getConfidence());
 
         cardDetail = cardDetailRepository.save(cardDetail);

@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Editor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e8;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: #031c99;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .header h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: 0.5px; }
+        .header span { color: #a0b4ff; font-size: 0.85rem; }
+
+        /* Search bar */
+        .search-bar {
+            background: #1a1a2e;
+            border-bottom: 1px solid #2a2a45;
+            padding: 14px 24px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .search-field { display: flex; flex-direction: column; gap: 4px; }
+        .search-field label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px; color: #8080a8; }
+        .search-field input {
+            background: #252540;
+            border: 1px solid #3a3a60;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e0e0e8;
+            font-size: 0.9rem;
+            width: 180px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .search-field input:focus { border-color: #4a6fff; }
+        .search-field input::placeholder { color: #505070; }
+
+        .btn {
+            padding: 8px 20px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-primary { background: #031c99; color: #fff; }
+        .btn-primary:hover { background: #0428cc; }
+        .btn-success { background: #1a7a3a; color: #fff; }
+        .btn-success:hover { background: #22963f; }
+        .btn-ghost { background: #252540; color: #a0a0c8; border: 1px solid #3a3a60; }
+        .btn-ghost:hover { background: #2e2e55; }
+
+        /* Main layout */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Results panel */
+        .results-panel {
+            width: 360px;
+            flex-shrink: 0;
+            border-right: 1px solid #2a2a45;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .results-header {
+            padding: 12px 16px;
+            background: #14142a;
+            border-bottom: 1px solid #2a2a45;
+            font-size: 0.8rem;
+            color: #8080a8;
+            display: flex;
+            justify-content: space-between;
+        }
+        .results-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .results-list::-webkit-scrollbar { width: 6px; }
+        .results-list::-webkit-scrollbar-track { background: #1a1a2e; }
+        .results-list::-webkit-scrollbar-thumb { background: #3a3a60; border-radius: 3px; }
+
+        .card-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1e1e38;
+            cursor: pointer;
+            transition: background 0.1s;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .card-item:hover { background: #1e1e38; }
+        .card-item.active { background: #1c2060; border-left: 3px solid #4a6fff; }
+
+        .card-thumb {
+            width: 44px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            background: #252540;
+            flex-shrink: 0;
+        }
+        .card-thumb-placeholder {
+            width: 44px;
+            height: 60px;
+            background: #252540;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #404060;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .card-info { flex: 1; min-width: 0; }
+        .card-player {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #c8c8e8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-meta {
+            font-size: 0.75rem;
+            color: #6060a0;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-status {
+            font-size: 0.7rem;
+            padding: 2px 7px;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+        .status-hit { background: #1a3a1a; color: #4acc4a; border: 1px solid #2a5a2a; }
+        .status-available { background: #1a2a4a; color: #4a90ff; border: 1px solid #2a3a6a; }
+
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #404060;
+        }
+        .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .empty-state p { font-size: 0.85rem; }
+
+        /* Edit panel */
+        .edit-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .edit-placeholder {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #303055;
+            gap: 10px;
+        }
+        .edit-placeholder .icon { font-size: 3rem; }
+        .edit-placeholder p { font-size: 0.9rem; }
+
+        .edit-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .edit-toolbar {
+            padding: 12px 24px;
+            background: #14142a;
+            border-bottom: 1px solid #2a2a45;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .edit-toolbar h2 { font-size: 1rem; font-weight: 600; flex: 1; }
+        .edit-toolbar .card-id { font-size: 0.75rem; color: #5050a0; }
+
+        .edit-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            gap: 24px;
+        }
+        .edit-body::-webkit-scrollbar { width: 6px; }
+        .edit-body::-webkit-scrollbar-track { background: #0f0f1a; }
+        .edit-body::-webkit-scrollbar-thumb { background: #3a3a60; border-radius: 3px; }
+
+        /* Card images column */
+        .images-col {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 160px;
+        }
+        .card-img-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #5050a0;
+            margin-bottom: 4px;
+        }
+        .card-img {
+            width: 160px;
+            height: auto;
+            border-radius: 8px;
+            object-fit: contain;
+            background: #1a1a2e;
+            border: 1px solid #2a2a45;
+        }
+        .card-img-placeholder {
+            width: 160px;
+            height: 220px;
+            background: #1a1a2e;
+            border: 1px solid #2a2a45;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #303055;
+            font-size: 2rem;
+        }
+
+        /* Form fields column */
+        .fields-col {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-content: start;
+        }
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .field-group.full-width { grid-column: 1 / -1; }
+        .field-group label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            color: #6060a0;
+        }
+        .field-group input, .field-group select, .field-group textarea {
+            background: #1e1e38;
+            border: 1px solid #2e2e58;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e0e0e8;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.15s;
+            width: 100%;
+        }
+        .field-group input:focus, .field-group select:focus, .field-group textarea:focus { border-color: #4a6fff; }
+        .field-group input::placeholder, .field-group textarea::placeholder { color: #404060; }
+        .field-group select option { background: #1e1e38; }
+        .field-group textarea { resize: vertical; font-family: inherit; min-height: 80px; }
+
+        .section-divider {
+            grid-column: 1 / -1;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4a4a80;
+            border-top: 1px solid #2a2a45;
+            padding-top: 12px;
+            margin-top: 4px;
+        }
+
+        /* Save bar */
+        .save-bar {
+            padding: 14px 24px;
+            background: #14142a;
+            border-top: 1px solid #2a2a45;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .save-status {
+            flex: 1;
+            font-size: 0.82rem;
+            color: #5050a0;
+        }
+        .save-status.success { color: #4acc4a; }
+        .save-status.error { color: #ff5050; }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Card Editor</h1>
+    <span>Admin</span>
+</div>
+
+<div class="search-bar">
+    <div class="search-field">
+        <label>Player</label>
+        <input type="text" id="searchPlayer" placeholder="e.g. Mike Trout" />
+    </div>
+    <div class="search-field">
+        <label>Product</label>
+        <input type="text" id="searchProduct" placeholder="e.g. Topps Chrome" />
+    </div>
+    <div class="search-field">
+        <label>Breaker ID</label>
+        <input type="number" id="searchBreaker" placeholder="e.g. 42" style="width:120px" />
+    </div>
+    <div class="search-field">
+        <label>Series #</label>
+        <input type="number" id="searchSeries" placeholder="e.g. 3" style="width:100px" />
+    </div>
+    <button class="btn btn-primary" onclick="runSearch()">Search</button>
+    <button class="btn btn-ghost" onclick="clearSearch()">Clear</button>
+</div>
+
+<div class="main">
+    <!-- Results list -->
+    <div class="results-panel">
+        <div class="results-header">
+            <span id="resultCount">No results</span>
+            <span>Max 100</span>
+        </div>
+        <div class="results-list" id="resultsList">
+            <div class="empty-state">
+                <div class="icon">🔍</div>
+                <p>Search to find cards</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit panel -->
+    <div class="edit-panel" id="editPanel">
+        <div class="edit-placeholder" id="editPlaceholder">
+            <div class="icon">✏️</div>
+            <p>Select a card to edit</p>
+        </div>
+
+        <div class="edit-content" id="editContent" style="display:none">
+            <div class="edit-toolbar">
+                <h2 id="editTitle">—</h2>
+                <span class="card-id" id="editCardId"></span>
+            </div>
+            <div class="edit-body">
+                <div class="images-col">
+                    <div>
+                        <div class="card-img-label">Front</div>
+                        <div id="frontImgWrap">
+                            <div class="card-img-placeholder">🃏</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card-img-label">Back</div>
+                        <div id="backImgWrap">
+                            <div class="card-img-placeholder">🃏</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="fields-col">
+                    <div class="section-divider">Player &amp; Team</div>
+
+                    <div class="field-group">
+                        <label>First Name</label>
+                        <input type="text" id="fPlayerFirst" placeholder="First name" />
+                    </div>
+                    <div class="field-group">
+                        <label>Last Name</label>
+                        <input type="text" id="fPlayerLast" placeholder="Last name" />
+                    </div>
+                    <div class="field-group">
+                        <label>Team</label>
+                        <input type="text" id="fTeam" placeholder="Team name" />
+                    </div>
+                    <div class="field-group">
+                        <label>Category Type ID</label>
+                        <input type="number" id="fCategoryTypeId" placeholder="e.g. 1" />
+                    </div>
+
+                    <div class="section-divider">Card Details</div>
+
+                    <div class="field-group">
+                        <label>Card Year</label>
+                        <input type="number" id="fCardYear" placeholder="e.g. 2023" />
+                    </div>
+                    <div class="field-group">
+                        <label>Parallel Type</label>
+                        <input type="text" id="fParallelType" placeholder="e.g. Refractor" />
+                    </div>
+                    <div class="field-group">
+                        <label>Serial Number</label>
+                        <input type="text" id="fSerialNumber" placeholder="e.g. 45/99" />
+                    </div>
+                    <div class="field-group">
+                        <label>Confidence</label>
+                        <input type="text" id="fConfidence" placeholder="e.g. HIGH" />
+                    </div>
+
+                    <div class="section-divider">Value &amp; Status</div>
+
+                    <div class="field-group">
+                        <label>USD Value</label>
+                        <input type="number" step="0.01" id="fUsdValue" placeholder="e.g. 75.00" />
+                    </div>
+                    <div class="field-group">
+                        <label>USD Value Range</label>
+                        <input type="text" id="fUsdValueRange" placeholder="e.g. $50-$100" />
+                    </div>
+                    <div class="field-group">
+                        <label>Status</label>
+                        <select id="fCardStatusId">
+                            <option value="1">Available (1)</option>
+                            <option value="2">Hit (2)</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>Hit Date</label>
+                        <input type="date" id="fHitDate" />
+                    </div>
+
+                    <div class="section-divider">Internal</div>
+
+                    <div class="field-group">
+                        <label>Product Tier ID</label>
+                        <input type="number" id="fProductTierId" placeholder="e.g. 1" />
+                    </div>
+
+                    <div class="section-divider">Factoid Blurb</div>
+
+                    <div class="field-group" style="grid-column: 1 / -1;">
+                        <label>Factoid</label>
+                        <textarea id="fFactoid" style="min-height:120px" placeholder="Engaging paragraph about the player…"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="save-bar">
+                <span class="save-status" id="saveStatus"></span>
+                <button class="btn btn-ghost" onclick="discardChanges()">Discard</button>
+                <button class="btn btn-success" id="saveBtn" onclick="saveCard()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedCard = null;
+
+    function runSearch() {
+        const player = document.getElementById('searchPlayer').value.trim();
+        const product = document.getElementById('searchProduct').value.trim();
+        const breakerId = document.getElementById('searchBreaker').value.trim();
+        const seriesNum = document.getElementById('searchSeries').value.trim();
+
+        const params = new URLSearchParams();
+        if (player) params.append('player', player);
+        if (product) params.append('product', product);
+        if (breakerId) params.append('breakerId', breakerId);
+        if (seriesNum) params.append('seriesNum', seriesNum);
+
+        const list = document.getElementById('resultsList');
+        list.innerHTML = '<div class="empty-state"><div class="spinner"></div><p style="margin-top:12px">Searching…</p></div>';
+
+        fetch('/admin/card-editor/search?' + params.toString())
+            .then(r => r.json())
+            .then(data => renderResults(data))
+            .catch(err => {
+                list.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Error loading results</p></div>';
+                console.error(err);
+            });
+    }
+
+    function clearSearch() {
+        document.getElementById('searchPlayer').value = '';
+        document.getElementById('searchProduct').value = '';
+        document.getElementById('searchBreaker').value = '';
+        document.getElementById('searchSeries').value = '';
+        document.getElementById('resultsList').innerHTML =
+            '<div class="empty-state"><div class="icon">🔍</div><p>Search to find cards</p></div>';
+        document.getElementById('resultCount').textContent = 'No results';
+        hideEditor();
+    }
+
+    function renderResults(cards) {
+        document.getElementById('resultCount').textContent = cards.length + ' card' + (cards.length !== 1 ? 's' : '');
+        const list = document.getElementById('resultsList');
+
+        if (cards.length === 0) {
+            list.innerHTML = '<div class="empty-state"><div class="icon">🃏</div><p>No cards found</p></div>';
+            return;
+        }
+
+        list.innerHTML = cards.map(card => {
+            const playerName = (card.firstName && card.lastName)
+                ? card.firstName + ' ' + card.lastName
+                : 'Unknown Player';
+            const statusCls = card.cardStatusId === 2 ? 'status-hit' : 'status-available';
+            const statusLabel = card.cardStatusId === 2 ? 'Hit' : 'Available';
+            const meta = [
+                card.productName || '—',
+                card.seriesNum != null ? 'S' + card.seriesNum : null,
+                card.cardYear || null
+            ].filter(Boolean).join(' · ');
+
+            const thumbUrl = card.processedFrontImgUrl || card.frontImgUrl;
+            const thumb = thumbUrl
+                ? `<img class="card-thumb" src="${escHtml(thumbUrl)}" alt="card" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                  + `<div class="card-thumb-placeholder" style="display:none">🃏</div>`
+                : `<div class="card-thumb-placeholder">🃏</div>`;
+
+            return `<div class="card-item" data-id="${card.seriesCardId}" onclick="selectCard(${card.seriesCardId})">
+                ${thumb}
+                <div class="card-info">
+                    <div class="card-player">${escHtml(playerName)}</div>
+                    <div class="card-meta">${escHtml(meta)}</div>
+                    <div class="card-meta" style="margin-top:4px">${escHtml(card.usdValueRange || '')}</div>
+                </div>
+                <span class="card-status ${statusCls}">${statusLabel}</span>
+            </div>`;
+        }).join('');
+
+        // store data for later lookup
+        window._cardData = {};
+        cards.forEach(c => window._cardData[c.seriesCardId] = c);
+    }
+
+    function selectCard(seriesCardId) {
+        const card = window._cardData[seriesCardId];
+        if (!card) return;
+
+        // Highlight row
+        document.querySelectorAll('.card-item').forEach(el => el.classList.remove('active'));
+        const row = document.querySelector(`.card-item[data-id="${seriesCardId}"]`);
+        if (row) row.classList.add('active');
+
+        selectedCard = card;
+        populateEditor(card);
+        clearStatus();
+    }
+
+    function populateEditor(card) {
+        const playerName = (card.firstName && card.lastName)
+            ? card.firstName + ' ' + card.lastName
+            : 'Unknown Player';
+
+        document.getElementById('editTitle').textContent = playerName;
+        document.getElementById('editCardId').textContent = 'Series Card: ' + card.seriesCardId + (card.id ? ' · Detail ID: ' + card.id : ' · No details yet');
+
+        // Images — fall back to raw URLs if processed not available
+        setImage('frontImgWrap', card.processedFrontImgUrl || card.frontImgUrl);
+        setImage('backImgWrap', card.processedBackImgUrl || card.backImgUrl);
+
+        // Fields
+        document.getElementById('fPlayerFirst').value = card.firstName || '';
+        document.getElementById('fPlayerLast').value = card.lastName || '';
+        document.getElementById('fTeam').value = card.teamName || '';
+        document.getElementById('fCategoryTypeId').value = card.cardCategoryTypeId || '';
+        document.getElementById('fCardYear').value = card.cardYear || '';
+        document.getElementById('fParallelType').value = card.parallelType || '';
+        document.getElementById('fSerialNumber').value = card.serialNumber || '';
+        document.getElementById('fConfidence').value = card.confidence || '';
+        document.getElementById('fUsdValue').value = card.usdValue != null ? card.usdValue : '';
+        document.getElementById('fUsdValueRange').value = card.usdValueRange || '';
+        document.getElementById('fCardStatusId').value = card.cardStatusId || '1';
+        document.getElementById('fHitDate').value = card.hitDate || '';
+        document.getElementById('fProductTierId').value = card.productTierId || '';
+        document.getElementById('fFactoid').value = card.factoid || '';
+
+        document.getElementById('editPlaceholder').style.display = 'none';
+        document.getElementById('editContent').style.display = 'flex';
+    }
+
+    function setImage(wrapperId, url) {
+        const wrap = document.getElementById(wrapperId);
+        if (url) {
+            wrap.innerHTML = `<img class="card-img" src="${escHtml(url)}" alt="card"
+                onerror="this.parentNode.innerHTML='<div class=\\'card-img-placeholder\\'>🃏</div>'">`;
+        } else {
+            wrap.innerHTML = '<div class="card-img-placeholder">🃏</div>';
+        }
+    }
+
+    function hideEditor() {
+        selectedCard = null;
+        document.querySelectorAll('.card-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('editPlaceholder').style.display = 'flex';
+        document.getElementById('editContent').style.display = 'none';
+    }
+
+    function discardChanges() {
+        if (selectedCard) populateEditor(selectedCard);
+        clearStatus();
+    }
+
+    function saveCard() {
+        if (!selectedCard) return;
+
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+        const payload = {
+            playerFirstName: document.getElementById('fPlayerFirst').value || null,
+            playerLastName: document.getElementById('fPlayerLast').value || null,
+            teamName: document.getElementById('fTeam').value || null,
+            cardCategoryTypeId: intOrNull('fCategoryTypeId'),
+            cardYear: intOrNull('fCardYear'),
+            parallelType: document.getElementById('fParallelType').value || null,
+            serialNumber: document.getElementById('fSerialNumber').value || null,
+            confidence: document.getElementById('fConfidence').value || null,
+            usdValue: floatOrNull('fUsdValue'),
+            usdValueRange: document.getElementById('fUsdValueRange').value || null,
+            cardStatusId: intOrNull('fCardStatusId'),
+            hitDate: document.getElementById('fHitDate').value || null,
+            productTierId: intOrNull('fProductTierId'),
+            factoid: document.getElementById('fFactoid').value || null,
+        };
+
+        fetch('/admin/card-editor/series-card/' + selectedCard.seriesCardId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            setStatus('Saved successfully', 'success');
+            // Update local cache so discard shows the new values
+            Object.assign(selectedCard, {
+                firstName: payload.playerFirstName,
+                lastName: payload.playerLastName,
+                teamName: payload.teamName,
+                cardCategoryTypeId: payload.cardCategoryTypeId,
+                cardYear: payload.cardYear,
+                parallelType: payload.parallelType,
+                serialNumber: payload.serialNumber,
+                confidence: payload.confidence,
+                usdValue: payload.usdValue,
+                usdValueRange: payload.usdValueRange,
+                cardStatusId: payload.cardStatusId,
+                hitDate: payload.hitDate,
+                productTierId: payload.productTierId,
+                factoid: payload.factoid,
+            });
+            // Refresh the list item
+            const row = document.querySelector(`.card-item[data-id="${selectedCard.seriesCardId}"]`);
+            if (row) {
+                const playerName = [payload.playerFirstName, payload.playerLastName].filter(Boolean).join(' ') || 'Unknown Player';
+                const nameEl = row.querySelector('.card-player');
+                if (nameEl) nameEl.textContent = playerName;
+                const statusEl = row.querySelector('.card-status');
+                if (statusEl) {
+                    statusEl.textContent = payload.cardStatusId === 2 ? 'Hit' : 'Available';
+                    statusEl.className = 'card-status ' + (payload.cardStatusId === 2 ? 'status-hit' : 'status-available');
+                }
+                document.getElementById('editTitle').textContent = playerName;
+            }
+        })
+        .catch(err => {
+            setStatus('Save failed: ' + err.message, 'error');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+        });
+    }
+
+    function setStatus(msg, type) {
+        const el = document.getElementById('saveStatus');
+        el.textContent = msg;
+        el.className = 'save-status ' + (type || '');
+    }
+
+    function clearStatus() {
+        setStatus('', '');
+    }
+
+    function intOrNull(id) {
+        const v = document.getElementById(id).value;
+        return v !== '' ? parseInt(v, 10) : null;
+    }
+
+    function floatOrNull(id) {
+        const v = document.getElementById(id).value;
+        return v !== '' ? parseFloat(v) : null;
+    }
+
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    // Search on Enter key
+    document.querySelectorAll('.search-bar input').forEach(input => {
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+    });
+</script>
+</body>
+</html>

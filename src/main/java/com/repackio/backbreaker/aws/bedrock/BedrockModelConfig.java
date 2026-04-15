@@ -19,7 +19,7 @@ public class BedrockModelConfig {
     /**
      * Default model ID to use when no specific model is configured.
      */
-    private String defaultModelId = "us.anthropic.claude-3-5-sonnet-20241022-v2:0";
+    private String defaultModelId = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
 
     /**
      * Default max tokens for model responses.

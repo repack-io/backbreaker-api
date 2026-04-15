@@ -14,10 +14,14 @@ import lombok.NoArgsConstructor;
 public class CardLabelData {
     private Long cardDetailId;
     private Long seriesCardId;
+    private String breakerName;
+    private String seriesName;
+    private String factoid;
     private String playerName;
     private String teamName;
     private Integer cardYear;
     private String parallelType;
     private String serialNumber;
     private String tierName;
+    private String productName;
 }

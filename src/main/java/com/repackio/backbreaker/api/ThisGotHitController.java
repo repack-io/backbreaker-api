@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 
 @Slf4j
 @RestController
@@ -42,8 +43,9 @@ public class ThisGotHitController {
                         return new IllegalArgumentException("Card not found for series_card_id: " + seriesCardId);
                     });
 
-            // Mark the card as hit (status 2)
+            // Mark the card as hit (status 2) and set hit date
             cardDetail.setCardStatusId(2);
+            cardDetail.setHitDate(LocalDate.now());
             cardDetailRepository.save(cardDetail);
 
             log.info("Card detail {} marked as hit for series_card_id: {}", cardDetail.getId(), seriesCardId);
@@ -57,11 +59,17 @@ public class ThisGotHitController {
                     ? cardDetail.getPlayer().getFullName()
                     : "Unknown Player";
 
+            // Get value range
+            String valueRange = cardDetail.getUsdValueRange() != null
+                    ? cardDetail.getUsdValueRange()
+                    : "Value not available";
+
             // Build and return HTML success page
             String html = buildSuccessPage(
                     playerName,
                     seriesCard.getProcessedFrontImgUrl(),
-                    seriesCard.getProcessedBackImgUrl()
+                    seriesCard.getProcessedBackImgUrl(),
+                    valueRange
             );
 
             return ResponseEntity
@@ -84,30 +92,33 @@ public class ThisGotHitController {
         }
     }
 
-    private String buildSuccessPage(String playerName, String frontImgUrl, String backImgUrl) {
+    private String buildSuccessPage(String playerName, String frontImgUrl, String backImgUrl, String valueRange) {
         try {
             String template = loadTemplate("templates/card-hit-success.html");
             return template
                     .replace("{{PLAYER_NAME}}", escapeHtml(playerName))
                     .replace("{{FRONT_IMG_URL}}", escapeHtml(frontImgUrl != null ? frontImgUrl : ""))
-                    .replace("{{BACK_IMG_URL}}", escapeHtml(backImgUrl != null ? backImgUrl : ""));
+                    .replace("{{BACK_IMG_URL}}", escapeHtml(backImgUrl != null ? backImgUrl : ""))
+                    .replace("{{VALUE_RANGE}}", escapeHtml(valueRange));
         } catch (IOException e) {
             log.error("Failed to load success template", e);
-            return buildFallbackSuccessPage(playerName, frontImgUrl, backImgUrl);
+            return buildFallbackSuccessPage(playerName, frontImgUrl, backImgUrl, valueRange);
         }
     }
 
-    private String buildFallbackSuccessPage(String playerName, String frontImgUrl, String backImgUrl) {
+    private String buildFallbackSuccessPage(String playerName, String frontImgUrl, String backImgUrl, String valueRange) {
         return """
                 <!DOCTYPE html>
                 <html><head><meta charset="UTF-8"><title>Success</title></head>
                 <body style="font-family:sans-serif;text-align:center;padding:40px;">
                     <h1>Card Hit Successfully!</h1>
                     <h2>%s</h2>
+                    <p><strong>Estimated Value:</strong> %s</p>
                     <p>Front: <a href="%s">View</a></p>
                     <p>Back: <a href="%s">View</a></p>
                 </body></html>
                 """.formatted(escapeHtml(playerName),
+                             escapeHtml(valueRange),
                              escapeHtml(frontImgUrl != null ? frontImgUrl : ""),
                              escapeHtml(backImgUrl != null ? backImgUrl : ""));
     }

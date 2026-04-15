@@ -43,7 +43,7 @@ cp "$JAR_FILE" eb_build/application.jar
 
 # EB Procfile with environment-specific profile
 cat <<EOF > eb_build/Procfile
-web: java -jar application.jar --server.port=5000 --spring.profiles.active=aws-$ENV
+web: java -Xmx512m -jar application.jar --server.port=5000 --spring.profiles.active=aws-$ENV
 EOF
 
 cd eb_build
